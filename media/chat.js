@@ -1403,7 +1403,10 @@
         : "";
 
     const partsSig = escapeHtml(partsSignature(msg.parts));
-    return `<article class="msg ${msg.role}" data-id="${msg.id}" data-parts-sig="${partsSig}">
+    const isSystemOk = msg.role === "system" && /enabled|success|ready|connected/i.test(partsHtml);
+    const isSystemErr = msg.role === "system" && /error|failed|fault|crash/i.test(partsHtml);
+    const systemStatusClass = isSystemOk ? " ok" : (isSystemErr ? " error" : "");
+    return `<article class="msg ${msg.role}${systemStatusClass}" data-id="${msg.id}" data-parts-sig="${partsSig}">
       <div class="role">${msg.role}</div>
       ${partsHtml || fallback}
       ${attachmentsHtml}
@@ -2770,45 +2773,50 @@
     const thkOn = state.showThinking !== false;
     const termOn = state.showTerminal !== false;
 
-    let html = '<div class="dropdown-header">Toggles</div>';
+    let html = '<div class="dropdown-header">Agent Runtime</div>';
 
-    // Row 1: Advisor
+    // Row 1: Advisor Review Mode
     html += '<button type="button" class="dropdown-item" data-action="toggle-advisor">';
     html += '<div class="dropdown-item-left">';
     html += '<span class="dropdown-check">' + (advOn ? '✓' : '') + '</span>';
-    html += '<span class="dropdown-item-label">Advisor</span>';
+    html += '<span class="dropdown-item-label">Advisor Review Mode</span>';
     html += '</div>';
     html += '<span class="dropdown-badge' + (advOn ? ' on' : '') + '">' + (advOn ? 'ON' : 'OFF') + '</span>';
     html += '</button>';
 
-    // Row 2: Thinking Blocks
+    html += '<div class="dropdown-header">Display Blocks</div>';
+
+    // Row 2: Display Thinking
     html += '<button type="button" class="dropdown-item" data-action="toggle-thinking-vis">';
     html += '<div class="dropdown-item-left">';
     html += '<span class="dropdown-check">' + (thkOn ? '✓' : '') + '</span>';
-    html += '<span class="dropdown-item-label">Thinking Blocks</span>';
+    html += '<span class="dropdown-item-label">Display Thinking</span>';
     html += '</div>';
-    html += '<span class="dropdown-badge' + (thkOn ? ' on' : '') + '">' + (thkOn ? 'ON' : 'OFF') + '</span>';
+    html += '<span class="dropdown-badge' + (thkOn ? ' on' : '') + '">' + (thkOn ? 'SHOW' : 'HIDE') + '</span>';
     html += '</button>';
 
-    // Row 3: Tool Activity (Grep, Read, Edit, Write, Bash, etc.)
+    // Row 3: Display Terminal Runs
+    html += '<button type="button" class="dropdown-item" data-action="toggle-terminal-vis">';
+    html += '<div class="dropdown-item-left">';
+    html += '<span class="dropdown-check">' + (termOn ? '✓' : '') + '</span>';
+    html += '<span class="dropdown-item-label">Display Terminal Runs</span>';
+    html += '</div>';
+    html += '<span class="dropdown-badge' + (termOn ? ' on' : '') + '">' + (termOn ? 'SHOW' : 'HIDE') + '</span>';
+    html += '</button>';
+
+    // Row 4: Display Tool Activity
     const toolsOn = state.showTools !== false;
     html += '<button type="button" class="dropdown-item" data-action="toggle-tools-vis">';
     html += '<div class="dropdown-item-left">';
     html += '<span class="dropdown-check">' + (toolsOn ? '✓' : '') + '</span>';
-    html += '<span class="dropdown-item-label">Tool Activity (Grep, Read...)</span>';
+    html += '<span class="dropdown-item-label">Display Tool Activity</span>';
     html += '</div>';
-    html += '<span class="dropdown-badge' + (toolsOn ? ' on' : '') + '">' + (toolsOn ? 'ON' : 'OFF') + '</span>';
+    html += '<span class="dropdown-badge' + (toolsOn ? ' on' : '') + '">' + (toolsOn ? 'SHOW' : 'HIDE') + '</span>';
     html += '</button>';
 
-    // Row 4: Terminal Runs Only (Bash/Shell only)
-    html += '<button type="button" class="dropdown-item" data-action="toggle-terminal-vis">';
-    html += '<div class="dropdown-item-left">';
-    html += '<span class="dropdown-check">' + (termOn ? '✓' : '') + '</span>';
-    html += '<span class="dropdown-item-label">Terminal Runs Only</span>';
-    html += '</div>';
-    html += '<span class="dropdown-badge' + (termOn ? ' on' : '') + '">' + (termOn ? 'ON' : 'OFF') + '</span>';
-    html += '</button>';
-    // Row 4: Expand/Collapse All
+    html += '<div class="dropdown-header">Actions</div>';
+
+    // Row 5: Expand / Collapse All
     html += '<button type="button" class="dropdown-item" data-action="toggle-expand-all">';
     html += '<div class="dropdown-item-left">';
     html += '<span class="dropdown-check">⤢</span>';
@@ -2915,7 +2923,9 @@
     }
     if (e.key === "Enter" && e.shiftKey) {
       e.preventDefault();
-      insertComposerNodesAtCaret([document.createElement("br")]);
+      if (!document.execCommand("insertLineBreak")) {
+        insertComposerNodesAtCaret([document.createElement("br")]);
+      }
       autosize();
       syncComposerEmptyState();
     }
