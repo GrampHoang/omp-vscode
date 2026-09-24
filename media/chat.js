@@ -1406,7 +1406,7 @@
         : "";
 
     const visibleContent = (partsHtml || fallback || attachmentsHtml || "").trim();
-    if (!visibleContent && msg.role !== "user") {
+    if (!visibleContent) {
       return "";
     }
     const partsSig = escapeHtml(partsSignature(msg.parts));
@@ -1661,15 +1661,11 @@
         const prevScrollTop = messagesEl.scrollTop;
         const prevScrollHeight = messagesEl.scrollHeight;
         const shouldStick = stickToBottom || isNearBottom(messagesEl, 80);
-        const visibleTranscriptCount = transcript.reduce(function (count, m) {
-          const rendered = renderMessage(m);
-          return rendered.trim() ? count + 1 : count;
-        }, 0);
         const canPatch =
-          existing &&
+          Boolean(existing) &&
+          messagesEl.lastElementChild === existing &&
           last.role === "assistant" &&
-          last.streaming &&
-          messagesEl.children.length === visibleTranscriptCount;
+          last.streaming;
         if (canPatch) {
           const signature = partsSignature(last.parts);
           const existingSig = existing.getAttribute("data-parts-sig") || "";

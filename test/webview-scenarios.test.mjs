@@ -162,7 +162,8 @@ test("Scenario 3: Fast-path canPatch succeeds during streaming when intermediate
     addEventListener: () => {},
     classList: { add: () => {}, remove: () => {}, toggle: () => {} },
     style: {},
-    children: [articleUser, articleReply], // 2 visible children in DOM
+    children: [articleUser, articleReply],
+    get lastElementChild() { return this.children[this.children.length - 1]; },
     querySelector: (sel) => {
       if (sel.includes("turn3_streaming")) return articleReply;
       return null;
