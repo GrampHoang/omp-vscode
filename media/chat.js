@@ -51,6 +51,7 @@
     messages: [],
     attachments: [],
     showThinking: true,
+    showTools: true,
     showTerminal: true,
     model: "Model",
     thinkingLevel: "auto",
@@ -1209,6 +1210,9 @@
         toolKey === "shell" ||
         toolAction === "bash" ||
         toolAction === "shell";
+      if (state.showTools === false) {
+        return "";
+      }
       if (state.showTerminal === false && isCommandTool) {
         return "";
       }
@@ -2700,9 +2704,25 @@
       toggleAllCollapses();
       return;
     }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "o") {
+      e.preventDefault();
+      state.showTools = state.showTools === false ? true : false;
+      render();
+      renderTogglesPopover();
+      vscode.postMessage({ type: "toggleToolsVisibility" });
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "t") {
+      e.preventDefault();
+      state.showThinking = state.showThinking === false ? true : false;
+      render();
+      renderTogglesPopover();
+      vscode.postMessage({ type: "toggleThinkingVisibility" });
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "t") {
       e.preventDefault();
-      state.showTerminal = !state.showTerminal;
+      state.showTerminal = state.showTerminal === false ? true : false;
       render();
       renderTogglesPopover();
       vscode.postMessage({ type: "toggleTerminalVisibility" });
@@ -2797,15 +2817,24 @@
     html += '<span class="dropdown-badge' + (thkOn ? ' on' : '') + '">' + (thkOn ? 'ON' : 'OFF') + '</span>';
     html += '</button>';
 
-    // Row 3: Terminal / Tool Runs
+    // Row 3: Tool Activity (Grep, Read, Edit, Write, Bash, etc.)
+    const toolsOn = state.showTools !== false;
+    html += '<button type="button" class="dropdown-item" data-action="toggle-tools-vis">';
+    html += '<div class="dropdown-item-left">';
+    html += '<span class="dropdown-check">' + (toolsOn ? '✓' : '') + '</span>';
+    html += '<span class="dropdown-item-label">Tool Activity (Grep, Read...)</span>';
+    html += '</div>';
+    html += '<span class="dropdown-badge' + (toolsOn ? ' on' : '') + '">' + (toolsOn ? 'ON' : 'OFF') + '</span>';
+    html += '</button>';
+
+    // Row 4: Terminal Runs Only (Bash/Shell only)
     html += '<button type="button" class="dropdown-item" data-action="toggle-terminal-vis">';
     html += '<div class="dropdown-item-left">';
     html += '<span class="dropdown-check">' + (termOn ? '✓' : '') + '</span>';
-    html += '<span class="dropdown-item-label">Terminal Runs</span>';
+    html += '<span class="dropdown-item-label">Terminal Runs Only</span>';
     html += '</div>';
     html += '<span class="dropdown-badge' + (termOn ? ' on' : '') + '">' + (termOn ? 'ON' : 'OFF') + '</span>';
     html += '</button>';
-
     // Row 4: Expand/Collapse All
     html += '<button type="button" class="dropdown-item" data-action="toggle-expand-all">';
     html += '<div class="dropdown-item-left">';
@@ -2858,6 +2887,13 @@
         renderTogglesPopover();
         render();
         vscode.postMessage({ type: "toggleThinkingVisibility" });
+        return;
+      }
+      if (action === "toggle-tools-vis") {
+        state.showTools = state.showTools === false ? true : false;
+        renderTogglesPopover();
+        render();
+        vscode.postMessage({ type: "toggleToolsVisibility" });
         return;
       }
       if (action === "toggle-terminal-vis") {
@@ -3307,8 +3343,8 @@
         messages: msg.messages || [],
         attachments: msg.attachments || [],
         showThinking: msg.showThinking !== false,
+        showTools: msg.showTools !== false,
         showTerminal: msg.showTerminal !== false,
-        model: msg.model || state.model,
         thinkingLevel: msg.thinkingLevel != null ? msg.thinkingLevel : state.thinkingLevel,
         reasoningSupported: msg.reasoningSupported !== false,
         mode: msg.mode || state.mode,
@@ -3363,8 +3399,8 @@
     }
     if (msg.type === "config") {
       if (msg.showThinking != null) state.showThinking = msg.showThinking !== false;
+      if (msg.showTools != null) state.showTools = msg.showTools !== false;
       if (msg.showTerminal != null) state.showTerminal = msg.showTerminal !== false;
-      if (msg.model != null) state.model = msg.model;
       if (msg.thinkingLevel != null) state.thinkingLevel = msg.thinkingLevel;
       if (msg.reasoningSupported != null) state.reasoningSupported = msg.reasoningSupported !== false;
       if (msg.mode != null) state.mode = msg.mode;

@@ -41,6 +41,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         if (
           e.affectsConfiguration("ompChat.showThinking") ||
           e.affectsConfiguration("ompChat.showTerminal") ||
+          e.affectsConfiguration("ompChat.showTools") ||
           e.affectsConfiguration("ompChat.thinking") ||
           e.affectsConfiguration("ompChat.model") ||
           e.affectsConfiguration("ompChat.mode")
@@ -57,6 +58,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             showTerminal: vscode.workspace
               .getConfiguration("ompChat")
               .get<boolean>("showTerminal", true),
+            showTools: vscode.workspace
+              .getConfiguration("ompChat")
+              .get<boolean>("showTools", true),
             model: this.currentModelLabel(),
             thinkingLevel: this.sessions.getThinkingLevel(),
             reasoningSupported: this.sessions.isReasoningSupported(),
@@ -245,6 +249,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         break;
       case "toggleTerminalVisibility":
         await this.toggleTerminalVisibility();
+        break;
+      case "toggleToolsVisibility":
+        await this.toggleToolsVisibility();
         break;
       case "attachMenu":
         await this.showAttachMenu();
@@ -451,6 +458,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       attachments: this.sessions.getAttachments(),
       showThinking,
       showTerminal,
+      showTools: vscode.workspace
+        .getConfiguration("ompChat")
+        .get<boolean>("showTools", true),
       model: this.currentModelLabel(),
       thinkingLevel: this.sessions.getThinkingLevel(),
       reasoningSupported: this.sessions.isReasoningSupported(),
@@ -714,6 +724,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.post({ type: "config", showTerminal: !current });
   }
 
+  async toggleToolsVisibility(): Promise<void> {
+    const cfg = vscode.workspace.getConfiguration("ompChat");
+    const current = cfg.get<boolean>("showTools", true);
+    await cfg.update("showTools", !current, vscode.ConfigurationTarget.Global);
+    this.post({ type: "config", showTools: !current });
+  }
   private async showTogglesMenu(): Promise<void> {
     const cfg = vscode.workspace.getConfiguration("ompChat");
     const showThinking = cfg.get<boolean>("showThinking", true);
@@ -1261,17 +1277,21 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         break;
       case "advisor": {
         const sub = argText.toLowerCase();
-        if (sub === "on" || sub === "off" || sub === "status") {
-          await this.sessions.send(`/advisor ${sub}`);
+        if (sub === "on" || sub === "off") {
+          await this.sessions.toggleAdvisor(sub);
+        } else if (sub === "status") {
+          await this.sessions.queryAdvisorStatus();
         } else {
           const items: vscode.QuickPickItem[] = [
-            { label: "$(play) Turn Advisor On", description: "/advisor on" },
-            { label: "$(stop) Turn Advisor Off", description: "/advisor off" },
-            { label: "$(info) Show Advisor Status", description: "/advisor status" },
+            { label: "$(play) Turn Advisor On", description: "on" },
+            { label: "$(stop) Turn Advisor Off", description: "off" },
+            { label: "$(info) Show Advisor Status", description: "status" },
           ];
           const picked = await vscode.window.showQuickPick(items, { title: "OMP Advisor" });
-          if (picked?.description) {
-            await this.sessions.send(picked.description);
+          if (picked?.description === "on" || picked?.description === "off") {
+            await this.sessions.toggleAdvisor(picked.description);
+          } else if (picked?.description === "status") {
+            await this.sessions.queryAdvisorStatus();
           }
         }
         break;

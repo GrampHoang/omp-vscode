@@ -210,7 +210,25 @@ export class SessionManager {
   async toggleAdvisor(target?: "on" | "off" | "toggle"): Promise<void> {
     const next = target === "toggle" || target === undefined ? !this.advisorEnabled : target === "on";
     const cmd = next ? "/advisor on" : "/advisor off";
-    await this.send(cmd);
+    this.advisorEnabled = next;
+    if (this.client?.isReady) {
+      try {
+        await this.client.request({ type: "prompt", message: cmd });
+      } catch (err) {
+        logWarn("Failed to toggle advisor via RPC", err);
+      }
+    }
+    this.notify();
+  }
+
+  async queryAdvisorStatus(): Promise<void> {
+    if (this.client?.isReady) {
+      try {
+        await this.client.request({ type: "prompt", message: "/advisor status" });
+      } catch (err) {
+        logWarn("Failed to query advisor status via RPC", err);
+      }
+    }
   }
   private setStatus(status: SessionStatus): void {
     this.status = status;

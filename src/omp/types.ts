@@ -133,6 +133,7 @@ export type HostToWebview =
       attachments: Attachment[];
       showThinking: boolean;
       showTerminal?: boolean;
+      showTools?: boolean;
       model?: string;
       thinkingLevel?: string;
       reasoningSupported?: boolean;
@@ -152,6 +153,7 @@ export type HostToWebview =
       type: "config";
       showThinking?: boolean;
       showTerminal?: boolean;
+      showTools?: boolean;
       model?: string;
       thinkingLevel?: string;
       reasoningSupported?: boolean;
@@ -191,6 +193,7 @@ export type WebviewToHost =
   | { type: "showTogglesMenu" }
   | { type: "toggleThinkingVisibility" }
   | { type: "toggleTerminalVisibility" }
+  | { type: "toggleToolsVisibility" }
   | { type: "attachMenu" }
   | { type: "attachFiles" }
   | { type: "attachFolder" }

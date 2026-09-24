@@ -264,7 +264,12 @@
         "ompChat.showTerminal": {
           "type": "boolean",
           "default": true,
-          "description": "Show tool and terminal run blocks in the chat UI."
+          "description": "Show terminal run blocks in the chat UI."
+        },
+        "ompChat.showTools": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show tool activity blocks (Grep, Read, Edit, Write, Bash) in the chat UI."
         },
         "ompChat.logFileTouches": {
           "type": "boolean",

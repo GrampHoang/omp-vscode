@@ -457,6 +457,10 @@ export class TabManager {
   async toggleAdvisor(target?: "on" | "off" | "toggle"): Promise<void> {
     await this.active().toggleAdvisor(target);
   }
+
+  async queryAdvisorStatus(): Promise<void> {
+    await this.active().queryAdvisorStatus();
+  }
   async refreshSessionState(): Promise<void> {
     await this.active().refreshSessionState();
   }
