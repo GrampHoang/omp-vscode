@@ -319,6 +319,8 @@ export class SessionManager {
       }
       if (/advisor is enabled/i.test(trimmed)) {
         this.advisorEnabled = true;
+      } else if (/advisor is disabled/i.test(trimmed)) {
+        this.advisorEnabled = false;
       }
       const msg: ChatMessage = {
         id: randomUUID(),

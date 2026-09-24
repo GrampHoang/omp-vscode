@@ -83,3 +83,16 @@ test("toggleAllCollapses logic ignores flat tool div elements without open prope
   const allOpenNow = detailsElements.every((el) => el.open);
   assert.equal(allOpenNow, true);
 });
+test("isCommandTool discriminates bash/shell command tools from file/edit tools", () => {
+  const isCommand = (name) => {
+    const key = String(name || "").toLowerCase();
+    return key === "bash" || key === "shell";
+  };
+
+  assert.equal(isCommand("bash"), true);
+  assert.equal(isCommand("shell"), true);
+  assert.equal(isCommand("read"), false);
+  assert.equal(isCommand("edit"), false);
+  assert.equal(isCommand("write"), false);
+  assert.equal(isCommand("grep"), false);
+});

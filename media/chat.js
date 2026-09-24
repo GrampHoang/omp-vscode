@@ -1195,7 +1195,6 @@
       );
     }
     if (part.kind === "tool") {
-      if (state.showTerminal === false) return "";
       const running = part.status === "running";
       const collapseId = "tool:" + String(part.id || part.name || "tool");
       // Keep tool/command cards collapsed until the user expands them.
@@ -1210,7 +1209,9 @@
         toolKey === "shell" ||
         toolAction === "bash" ||
         toolAction === "shell";
-      const fileRefs = [];
+      if (state.showTerminal === false && isCommandTool) {
+        return "";
+      }
       const singleFileTool = isFilePathTool(part.name);
       // Ran command should show the command text, not file hyperlinks mined from argv.
       if (!isCommandTool) {
@@ -2799,7 +2800,7 @@
     html += '<button type="button" class="dropdown-item" data-action="toggle-terminal-vis">';
     html += '<div class="dropdown-item-left">';
     html += '<span class="dropdown-check">' + (termOn ? '✓' : '') + '</span>';
-    html += '<span class="dropdown-item-label">Terminal / Tool Runs</span>';
+    html += '<span class="dropdown-item-label">Terminal Runs</span>';
     html += '</div>';
     html += '<span class="dropdown-badge' + (termOn ? ' on' : '') + '">' + (termOn ? 'ON' : 'OFF') + '</span>';
     html += '</button>';
