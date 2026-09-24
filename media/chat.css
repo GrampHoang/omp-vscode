@@ -310,6 +310,11 @@ button {
   border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   background: color-mix(in srgb, var(--text) 2.5%, transparent);
 }
+.collapse.thinking .collapse-body {
+  margin: 2px 0 4px 14px;
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--text) 1.5%, transparent);
+}
 .thinking.live > .collapse-summary,
 .tool.live > .collapse-summary {
   color: var(--muted);
@@ -328,12 +333,18 @@ button {
 .tool > .collapse-summary:hover {
   color: color-mix(in srgb, var(--muted) 70%, var(--text));
 }
-.thinking-body {
+.thinking-body,
+.bubble pre.thinking-body {
   margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   white-space: pre-wrap;
+  word-break: break-word;
   font-family: var(--font);
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--muted);
   max-height: 220px;
   overflow: auto;
@@ -534,7 +545,7 @@ button {
   background: transparent;
   font-size: 12px;
 }
-.bubble pre, .md-pre {
+.md-code .md-pre, .md-pre {
   margin: 0; padding: 10px; border-radius: 10px;
   overflow-x: auto; overflow-y: hidden;
   box-sizing: border-box; max-width: 100%; min-width: 0;

@@ -3318,10 +3318,12 @@
         showThinking: msg.showThinking !== false,
         showTools: msg.showTools !== false,
         showTerminal: msg.showTerminal !== false,
+        model: msg.model || state.model,
         thinkingLevel: msg.thinkingLevel != null ? msg.thinkingLevel : state.thinkingLevel,
         reasoningSupported: msg.reasoningSupported !== false,
         advisorEnabled: Boolean(msg.advisorEnabled),
         mode: msg.mode || state.mode,
+        displayName: msg.displayName || state.displayName,
         contextUsage: msg.contextUsage != null ? msg.contextUsage : state.contextUsage,
         tabs: msg.tabs || [],
         activeTabId: nextTabId,
@@ -3372,6 +3374,8 @@
     }
     if (msg.type === "config") {
       if (msg.showThinking != null) state.showThinking = msg.showThinking !== false;
+      if (msg.model != null) state.model = msg.model;
+      if (msg.displayName != null) state.displayName = msg.displayName;
       if (msg.showTools != null) state.showTools = msg.showTools !== false;
       if (msg.showTerminal != null) state.showTerminal = msg.showTerminal !== false;
       if (msg.thinkingLevel != null) state.thinkingLevel = msg.thinkingLevel;
