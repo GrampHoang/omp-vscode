@@ -166,7 +166,8 @@ export type HostToWebview =
   | { type: "fileResults"; requestId: number; files: FileSuggestItem[] }
   | { type: "uiQuestion"; question: UiQuestion | null }
   | { type: "composerPrefill"; text: string }
-  | { type: "inlineImage"; clientId?: string; attachment: Attachment };
+  | { type: "inlineImage"; clientId?: string; attachment: Attachment }
+  | { type: "toggleCollapseAll"; expand?: boolean };
 
 export type WebviewToHost =
   | { type: "ready" }
@@ -183,6 +184,7 @@ export type WebviewToHost =
   | { type: "pickThinkingLevel" }
   | { type: "pickMode" }
   | { type: "showUsage" }
+  | { type: "showTogglesMenu" }
   | { type: "attachMenu" }
   | { type: "attachFiles" }
   | { type: "attachFolder" }

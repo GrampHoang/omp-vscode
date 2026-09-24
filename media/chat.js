@@ -15,6 +15,7 @@
   const historyBtn = document.getElementById("historyBtn");
   const moreBtn = document.getElementById("moreBtn");
   const attachBtn = document.getElementById("attachBtn");
+  const togglesBtn = document.getElementById("togglesBtn");
   const attachFilesBtn = document.getElementById("attachFilesBtn");
   const attachFolderBtn = document.getElementById("attachFolderBtn");
   const attachmentsEl = document.getElementById("attachments");
@@ -490,6 +491,26 @@
     if (collapseOpenIds.has(id)) return true;
     if (collapseOpenIds.has("closed:" + id)) return false;
     return Boolean(autoOpen);
+  }
+
+  function toggleAllCollapses(forcedExpand) {
+    const collapses = Array.prototype.slice.call(document.querySelectorAll(".collapse"));
+    if (!collapses.length) return;
+    const anyClosed = collapses.some(function (el) { return !el.open; });
+    const shouldExpand = forcedExpand !== undefined ? Boolean(forcedExpand) : anyClosed;
+    collapses.forEach(function (el) {
+      el.open = shouldExpand;
+      const id = el.getAttribute("data-collapse-id");
+      if (id) {
+        if (shouldExpand) {
+          collapseOpenIds.add(id);
+          collapseOpenIds.delete("closed:" + id);
+        } else {
+          collapseOpenIds.delete(id);
+          collapseOpenIds.add("closed:" + id);
+        }
+      }
+    });
   }
 
   function collapseOpenAttr(id, autoOpen) {
@@ -1599,7 +1620,7 @@
       sendBtn.setAttribute("aria-label", busy ? "Queue" : "Send");
       sendBtn.classList.toggle("queue", busy);
       setComposerEnabled(interactable);
-      [newChatBtn, historyBtn, moreBtn, attachBtn, attachFilesBtn, attachFolderBtn, modelBtn, thinkingBtn, modeBtn, usageBtn, queueToggleEl]
+      [newChatBtn, historyBtn, moreBtn, togglesBtn, attachBtn, attachFilesBtn, attachFolderBtn, modelBtn, thinkingBtn, modeBtn, usageBtn, queueToggleEl]
         .filter(Boolean)
         .forEach(function (btn) { btn.disabled = !interactable; });
 
@@ -2667,8 +2688,8 @@
   if (newChatBtn) newChatBtn.addEventListener("click", function () { vscode.postMessage({ type: "newChat" }); });
   if (historyBtn) historyBtn.addEventListener("click", function () { vscode.postMessage({ type: "history" }); });
   if (moreBtn) moreBtn.addEventListener("click", function () { vscode.postMessage({ type: "moreMenu" }); });
+  if (togglesBtn) togglesBtn.addEventListener("click", function () { vscode.postMessage({ type: "showTogglesMenu" }); });
   attachBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachMenu" }); });
-  attachFilesBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachFiles" }); });
   attachFolderBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachFolder" }); });
   modelBtn.addEventListener("click", function () { vscode.postMessage({ type: "pickModel" }); });
   if (thinkingBtn) thinkingBtn.addEventListener("click", function () { vscode.postMessage({ type: "pickThinkingLevel" }); });
@@ -3150,6 +3171,10 @@
       insertComposerImageChip(attachment);
       renderAttachments();
       autosize();
+      return;
+    }
+    if (msg.type === "toggleCollapseAll") {
+      toggleAllCollapses(msg.expand);
       return;
     }
     if (msg.type === "composerPrefill") {

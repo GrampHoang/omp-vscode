@@ -216,6 +216,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
         break;
       }
+      case "showTogglesMenu":
+        await this.showTogglesMenu();
+        break;
       case "attachMenu":
         await this.showAttachMenu();
         break;
@@ -573,6 +576,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             </button>
           </div>
           <div class="right-actions">
+            <button id="togglesBtn" class="icon-btn composer-icon" title="Toggles (Advisor, Thinking visibility, Expand all)" aria-label="Toggles" type="button">
+              <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" aria-hidden="true">
+                <path d="M11.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM4.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM11.5 11a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM1 3.5a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 0 1h-8a.5.5 0 0 1-.5-.5zm0 5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm5 0a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 0 1h-8a.5.5 0 0 1-.5-.5zm-5 5a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 0 1h-8a.5.5 0 0 1-.5-.5z"/>
+              </svg>
+            </button>
             <button id="attachBtn" class="icon-btn composer-icon" title="Attach" aria-label="Attach">
               <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path fill="currentColor" d="M13.56 3.56a2.25 2.25 0 0 0-3.18 0L3.66 10.28a3.25 3.25 0 0 0 4.6 4.6l5.65-5.66-.71-.7-5.65 5.65a2.25 2.25 0 1 1-3.18-3.18l6.72-6.72a1.25 1.25 0 1 1 1.77 1.77L6.86 12.04l-.71-.7 6.36-6.37a2.25 2.25 0 0 0 0-3.18z"/>
@@ -648,6 +656,55 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         mode: this.mode,
         displayName: this.displayName,
       });
+    }
+  }
+  toggleCollapseAll(expand?: boolean): void {
+    this.post({ type: "toggleCollapseAll", expand });
+  }
+
+  private async showTogglesMenu(): Promise<void> {
+    const cfg = vscode.workspace.getConfiguration("ompChat");
+    const showThinking = cfg.get<boolean>("showThinking", true);
+    const isAdvOn = this.sessions.isAdvisorEnabled();
+
+    const items: (vscode.QuickPickItem & { action: string })[] = [
+      {
+        label: `${isAdvOn ? "$(check) " : "$(circle-outline) "}Advisor`,
+        description: isAdvOn ? "Enabled — click to disable" : "Disabled — click to enable",
+        action: "advisor",
+      },
+      {
+        label: `${showThinking ? "$(check) " : "$(circle-outline) "}Thinking Blocks`,
+        description: showThinking ? "Visible in chat — click to hide" : "Hidden in chat — click to show",
+        action: "thinkingVisibility",
+      },
+      {
+        label: "$(fold) Toggle Expand / Collapse All",
+        description: "Expand or collapse all thinking & tool cards in active chat",
+        action: "toggleCollapse",
+      },
+    ];
+
+    const picked = await vscode.window.showQuickPick(items, {
+      title: "OMP Chat Toggles",
+      placeHolder: "Select a toggle or action",
+    });
+    if (!picked) return;
+
+    switch (picked.action) {
+      case "advisor":
+        await this.sessions.toggleAdvisor();
+        break;
+      case "thinkingVisibility":
+        await cfg.update("showThinking", !showThinking, vscode.ConfigurationTarget.Global);
+        this.post({
+          type: "config",
+          showThinking: !showThinking,
+        });
+        break;
+      case "toggleCollapse":
+        this.toggleCollapseAll();
+        break;
     }
   }
 
