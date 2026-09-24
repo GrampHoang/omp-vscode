@@ -182,6 +182,8 @@ export type WebviewToHost =
   | { type: "moreMenu" }
   | { type: "pickModel" }
   | { type: "pickThinkingLevel" }
+  | { type: "setThinkingLevel"; level: string }
+  | { type: "toggleAdvisor" }
   | { type: "pickMode" }
   | { type: "showUsage" }
   | { type: "showTogglesMenu" }

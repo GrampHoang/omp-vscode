@@ -201,6 +201,23 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "pickThinkingLevel":
         await this.pickThinkingLevelAndApply();
         break;
+      case "setThinkingLevel":
+        await this.sessions.setThinkingLevel(msg.level);
+        await vscode.workspace
+          .getConfiguration("ompChat")
+          .update("thinking", msg.level, vscode.ConfigurationTarget.Workspace);
+        this.post({
+          type: "config",
+          thinkingLevel: msg.level || "auto",
+          reasoningSupported: this.sessions.isReasoningSupported(),
+          model: this.currentModelLabel(),
+          mode: this.mode,
+          displayName: this.displayName,
+        });
+        break;
+      case "toggleAdvisor":
+        await this.sessions.toggleAdvisor();
+        break;
       case "pickMode":
         await this.pickModeAndApply();
         break;
@@ -555,6 +572,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           <div id="suggestHeader" class="suggest-header"></div>
           <div id="suggestList" class="suggest-list" role="listbox"></div>
         </div>
+        <div id="thinkingPopover" class="dropdown-popover thinking-popover" hidden></div>
+        <div id="togglesPopover" class="dropdown-popover toggles-popover" hidden></div>
         <div id="attachments" class="attachments"></div>
         <div id="input" class="composer-input" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Plan, @ for context, / for commands — Enter queues while generating"></div>
         <div class="composer-actions">

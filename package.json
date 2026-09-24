@@ -280,13 +280,13 @@
         "command": "ompChat.toggleCollapseAll",
         "key": "ctrl+o",
         "mac": "cmd+o",
-        "when": "view == ompChat.sidebar"
+        "when": "focusedView == 'ompChat.sidebar' || focusedView == 'ompChatDev.sidebar'"
       },
       {
         "command": "ompChat.toggleThinkingVisibility",
         "key": "ctrl+shift+t",
         "mac": "cmd+shift+t",
-        "when": "view == ompChat.sidebar"
+        "when": "focusedView == 'ompChat.sidebar' || focusedView == 'ompChatDev.sidebar'"
       }
     ]
   },

@@ -33,6 +33,8 @@
   const tabsEl = document.getElementById("tabs");
   const suggestEl = document.getElementById("suggest");
   const suggestHeaderEl = document.getElementById("suggestHeader");
+  const thinkingPopover = document.getElementById("thinkingPopover");
+  const togglesPopover = document.getElementById("togglesPopover");
   const suggestListEl = document.getElementById("suggestList");
   const uiQuestionEl = document.getElementById("uiQuestion");
   const activeQuestionEl = document.getElementById("activeQuestion");
@@ -2673,13 +2675,21 @@
     });
   }
   document.addEventListener("mousedown", function (e) {
-    if (!queueMenuOpen || !queuePanelEl) return;
-    if (queuePanelEl.contains(e.target)) return;
-    closeQueueMenu();
+    if (queueMenuOpen && queuePanelEl && !queuePanelEl.contains(e.target)) {
+      closeQueueMenu();
+    }
+    if (thinkingPopover && !thinkingPopover.hidden && !thinkingPopover.contains(e.target) && thinkingBtn && !thinkingBtn.contains(e.target)) {
+      thinkingPopover.hidden = true;
+    }
+    if (togglesPopover && !togglesPopover.hidden && !togglesPopover.contains(e.target) && togglesBtn && !togglesBtn.contains(e.target)) {
+      togglesPopover.hidden = true;
+    }
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && queueMenuOpen) {
-      closeQueueMenu();
+    if (e.key === "Escape") {
+      if (queueMenuOpen) closeQueueMenu();
+      if (thinkingPopover && !thinkingPopover.hidden) thinkingPopover.hidden = true;
+      if (togglesPopover && !togglesPopover.hidden) togglesPopover.hidden = true;
     }
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "o") {
       e.preventDefault();
@@ -2702,19 +2712,143 @@
   if (newChatBtn) newChatBtn.addEventListener("click", function () { vscode.postMessage({ type: "newChat" }); });
   if (historyBtn) historyBtn.addEventListener("click", function () { vscode.postMessage({ type: "history" }); });
   if (moreBtn) moreBtn.addEventListener("click", function () { vscode.postMessage({ type: "moreMenu" }); });
-  if (togglesBtn) togglesBtn.addEventListener("click", function () { vscode.postMessage({ type: "showTogglesMenu" }); });
+  if (togglesBtn) {
+    togglesBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      toggleTogglesPopover();
+    });
+  }
   attachBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachMenu" }); });
   if (attachFilesBtn) attachFilesBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachFiles" }); });
   if (attachFolderBtn) attachFolderBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachFolder" }); });
   modelBtn.addEventListener("click", function () { vscode.postMessage({ type: "pickModel" }); });
-  if (thinkingBtn) thinkingBtn.addEventListener("click", function () {
-    if (state.reasoningSupported === false) {
-      return;
-    }
-    vscode.postMessage({ type: "pickThinkingLevel" });
-  });
+  if (thinkingBtn) {
+    thinkingBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      toggleThinkingPopover();
+    });
+  }
   if (usageBtn) usageBtn.addEventListener("click", function () { vscode.postMessage({ type: "showUsage" }); });
   modeBtn.addEventListener("click", function () { vscode.postMessage({ type: "pickMode" }); });
+
+  function closeAllPopovers() {
+    if (thinkingPopover) thinkingPopover.hidden = true;
+    if (togglesPopover) togglesPopover.hidden = true;
+  }
+
+  function renderThinkingPopover() {
+    if (!thinkingPopover) return;
+    const current = (state.thinkingLevel && state.thinkingLevel.trim()) || "auto";
+    const levels = ["off", "minimal", "low", "medium", "high", "xhigh", "max", "auto"];
+    let html = '<div class="dropdown-header">Reasoning Level</div>';
+    levels.forEach(function (lvl) {
+      const isSel = lvl === current;
+      html += '<button type="button" class="dropdown-item' + (isSel ? ' active' : '') + '" data-level="' + lvl + '">';
+      html += '<div class="dropdown-item-left">';
+      html += '<span class="dropdown-check">' + (isSel ? '✓' : '') + '</span>';
+      html += '<span class="dropdown-item-label">' + lvl + '</span>';
+      html += '</div>';
+      html += '</button>';
+    });
+    thinkingPopover.innerHTML = html;
+  }
+
+  function toggleThinkingPopover() {
+    if (state.reasoningSupported === false) return;
+    if (!thinkingPopover) return;
+    const willOpen = thinkingPopover.hidden;
+    closeAllPopovers();
+    if (willOpen) {
+      renderThinkingPopover();
+      thinkingPopover.hidden = false;
+    }
+  }
+
+  function renderTogglesPopover() {
+    if (!togglesPopover) return;
+    const advOn = Boolean(state.advisorEnabled);
+    const thkOn = state.showThinking !== false;
+
+    let html = '<div class="dropdown-header">Toggles</div>';
+
+    // Row 1: Advisor
+    html += '<button type="button" class="dropdown-item" data-action="toggle-advisor">';
+    html += '<div class="dropdown-item-left">';
+    html += '<span class="dropdown-check">' + (advOn ? '✓' : '') + '</span>';
+    html += '<span class="dropdown-item-label">Advisor</span>';
+    html += '</div>';
+    html += '<span class="dropdown-badge' + (advOn ? ' on' : '') + '">' + (advOn ? 'ON' : 'OFF') + '</span>';
+    html += '</button>';
+
+    // Row 2: Thinking Blocks
+    html += '<button type="button" class="dropdown-item" data-action="toggle-thinking-vis">';
+    html += '<div class="dropdown-item-left">';
+    html += '<span class="dropdown-check">' + (thkOn ? '✓' : '') + '</span>';
+    html += '<span class="dropdown-item-label">Thinking Blocks</span>';
+    html += '</div>';
+    html += '<span class="dropdown-badge' + (thkOn ? ' on' : '') + '">' + (thkOn ? 'ON' : 'OFF') + '</span>';
+    html += '</button>';
+
+    // Row 3: Expand/Collapse All
+    html += '<button type="button" class="dropdown-item" data-action="toggle-expand-all">';
+    html += '<div class="dropdown-item-left">';
+    html += '<span class="dropdown-check">⤢</span>';
+    html += '<span class="dropdown-item-label">Expand / Collapse All</span>';
+    html += '</div>';
+    html += '</button>';
+
+    togglesPopover.innerHTML = html;
+  }
+
+  function toggleTogglesPopover() {
+    if (!togglesPopover) return;
+    const willOpen = togglesPopover.hidden;
+    closeAllPopovers();
+    if (willOpen) {
+      renderTogglesPopover();
+      togglesPopover.hidden = false;
+    }
+  }
+
+  if (thinkingPopover) {
+    thinkingPopover.addEventListener("click", function (e) {
+      const btn = e.target.closest("[data-level]");
+      if (!btn) return;
+      const lvl = btn.getAttribute("data-level");
+      if (!lvl) return;
+      state.thinkingLevel = lvl;
+      if (thinkingLabelEl) {
+        thinkingLabelEl.textContent = "Thinking: " + lvl;
+      }
+      closeAllPopovers();
+      vscode.postMessage({ type: "setThinkingLevel", level: lvl === "auto" ? "" : lvl });
+    });
+  }
+
+  if (togglesPopover) {
+    togglesPopover.addEventListener("click", function (e) {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      if (action === "toggle-advisor") {
+        state.advisorEnabled = !state.advisorEnabled;
+        renderTogglesPopover();
+        vscode.postMessage({ type: "toggleAdvisor" });
+        return;
+      }
+      if (action === "toggle-thinking-vis") {
+        state.showThinking = !state.showThinking;
+        renderTogglesPopover();
+        render();
+        vscode.postMessage({ type: "toggleThinkingVisibility" });
+        return;
+      }
+      if (action === "toggle-expand-all") {
+        toggleAllCollapses();
+        return;
+      }
+    });
+  }
 
   inputEl.addEventListener("keydown", function (e) {
     if (suggest.open && suggest.items.length) {
