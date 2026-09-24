@@ -96,3 +96,73 @@ test("isCommandTool discriminates bash/shell command tools from file/edit tools"
   assert.equal(isCommand("write"), false);
   assert.equal(isCommand("grep"), false);
 });
+test("chat.js evaluates and renders tool message without ReferenceError", async () => {
+  const fs = await import("node:fs");
+  const code = fs.readFileSync("media/chat.js", "utf8");
+
+  globalThis.Node = { TEXT_NODE: 3, ELEMENT_NODE: 1 };
+  const mockEl = () => ({
+    addEventListener: () => {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: {},
+    setAttribute: () => {},
+    getAttribute: () => null,
+    hidden: false,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    contains: () => false,
+    childNodes: [],
+    children: [],
+  });
+
+  let messageHandler = null;
+  const jsdom = {
+    getElementById: () => mockEl(),
+    addEventListener: (event, handler) => {
+      if (event === "message") messageHandler = handler;
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  };
+
+  globalThis.document = jsdom;
+  globalThis.window = jsdom;
+  globalThis.acquireVsCodeApi = () => ({ postMessage: () => {} });
+
+  const fn = new Function(code);
+  fn();
+
+  assert.equal(typeof messageHandler, "function");
+
+  let renderError = null;
+  const origErr = console.error;
+  console.error = (...args) => {
+    if (String(args[0] || "").includes("render failed")) {
+      renderError = args.join(" ");
+    }
+    origErr(...args);
+  };
+
+  try {
+    messageHandler({
+      data: {
+        type: "ready",
+        status: { state: "ready" },
+        messages: [
+          {
+            id: "m1",
+            role: "assistant",
+            parts: [
+              { kind: "text", text: "hi" },
+              { kind: "tool", name: "read", status: "done", fileRefs: [{ path: "foo.ts" }] }
+            ]
+          }
+        ]
+      }
+    });
+  } finally {
+    console.error = origErr;
+  }
+
+  assert.equal(renderError, null);
+});

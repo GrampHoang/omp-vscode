@@ -1212,6 +1212,7 @@
       if (state.showTerminal === false && isCommandTool) {
         return "";
       }
+      const fileRefs = [];
       const singleFileTool = isFilePathTool(part.name);
       // Ran command should show the command text, not file hyperlinks mined from argv.
       if (!isCommandTool) {
