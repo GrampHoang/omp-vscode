@@ -297,6 +297,7 @@
     "watch": "node esbuild.mjs --watch",
     "compile": "tsc -p tsconfig.json --noEmit",
     "package": "vsce package --no-dependencies --allow-missing-repository",
+    "package:dev": "node scripts/package-dev.mjs",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
