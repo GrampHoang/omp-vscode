@@ -437,6 +437,10 @@
         (part.streaming !== false && !part.endedAt && hasTextPart(msg) === false))
     );
   }
+  function cleanThinkingText(text) {
+    if (!text) return "";
+    return String(text).replace(/^\n+/, "").replace(/\n+$/, "");
+  }
 
   function patchThinkingPart(existing, msg, part, partIndex) {
     const collapseId = thinkingCollapseId(msg, partIndex);
@@ -445,8 +449,7 @@
     const pre = details.querySelector("pre.thinking-body");
     if (!pre) return false;
     const live = isThinkingLive(part, msg);
-    // Only replace text when it actually changed to avoid visible flicker.
-    const nextText = part.text || "";
+    const nextText = cleanThinkingText(part.text || "");
     if (pre.textContent !== nextText) {
       pre.textContent = nextText;
     }
@@ -1181,7 +1184,7 @@
       const liveClass = isLive ? " live" : "";
       const streamClass = isLive ? " streaming" : "";
       const label = thinkingLabel(part, isLive, collapseId);
-      const body = escapeHtml(part.text || "");
+      const body = escapeHtml(cleanThinkingText(part.text || ""));
       return (
         '<details class="collapse thinking' + liveClass + '" data-collapse-id="' + escapeHtml(collapseId) + '"' + openAttr + '>' +
           '<summary class="collapse-summary">' +

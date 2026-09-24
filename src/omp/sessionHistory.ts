@@ -271,7 +271,7 @@ export function chatMessagesFromOmp(rawMessages: unknown[]): ChatMessage[] {
         }
         const p = part as Record<string, unknown>;
         if (p.type === "thinking") {
-          const thinking = typeof p.thinking === "string" ? p.thinking : "";
+          const thinking = typeof p.thinking === "string" ? p.thinking.replace(/^\n+|\n+$/g, "") : "";
           parts.push({ kind: "thinking", text: thinking });
           continue;
         }

@@ -96,6 +96,19 @@ test("isCommandTool discriminates bash/shell command tools from file/edit tools"
   assert.equal(isCommand("write"), false);
   assert.equal(isCommand("grep"), false);
 });
+test("cleanThinkingText strips leading and trailing empty newlines from thoughts", () => {
+  const cleanThinkingText = (text) => {
+    if (!text) return "";
+    return String(text).replace(/^\n+/, "").replace(/\n+$/, "");
+  };
+
+  const rawThought = "Searching for omp-vscode session files.\n\n\n\n\n\n\n\n\n\n\n\n\n";
+  const cleaned = cleanThinkingText(rawThought);
+  assert.equal(cleaned, "Searching for omp-vscode session files.");
+
+  const multiLineThought = "\n\nLine 1\nLine 2\n\nLine 3\n\n\n";
+  assert.equal(cleanThinkingText(multiLineThought), "Line 1\nLine 2\n\nLine 3");
+});
 test("chat.js evaluates and renders tool message without ReferenceError", async () => {
   const fs = await import("node:fs");
   const code = fs.readFileSync("media/chat.js", "utf8");
