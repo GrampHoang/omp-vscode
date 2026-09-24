@@ -50,12 +50,36 @@ test("reasoning model detection identifies thinking capabilities", () => {
   assert.equal(isReasoningSupported(null), false);
 });
 
-test("advisor output regex correctly detects state changes", () => {
+test("advisor output regex correctly detects state changes and status reports", () => {
   const enabledOutput = "Advisor enabled.";
   const disabledOutput = "Advisor disabled.";
-  const statusOutput = "Advisor is enabled (openai-codex/gpt-5.6-terra). Context: 0 / 272,000 tokens (0%).";
+  const statusEnabledOutput = "Advisor is enabled (openai-codex/gpt-5.6-terra). Context: 0 / 272,000 tokens (0%).";
+  const statusDisabledOutput = "Advisor is disabled.";
 
-  assert.equal(/advisor enabled/i.test(enabledOutput), true);
-  assert.equal(/advisor disabled/i.test(disabledOutput), true);
-  assert.equal(/advisor is enabled/i.test(statusOutput), true);
+  const isEnabled = (text) => /advisor (?:is )?enabled/i.test(text);
+  const isDisabled = (text) => /advisor (?:is )?disabled/i.test(text);
+
+  assert.equal(isEnabled(enabledOutput), true);
+  assert.equal(isEnabled(statusEnabledOutput), true);
+  assert.equal(isEnabled(disabledOutput), false);
+
+  assert.equal(isDisabled(disabledOutput), true);
+  assert.equal(isDisabled(statusDisabledOutput), true);
+  assert.equal(isDisabled(enabledOutput), false);
+});
+
+test("toggleAllCollapses logic ignores flat tool div elements without open property", () => {
+  const elements = [
+    { tagName: "DETAILS", open: false, id: "thinking:1" },
+    { tagName: "DIV", open: undefined, id: null }, // flat tool card
+  ];
+
+  // Only check elements with boolean open property
+  const detailsElements = elements.filter((el) => typeof el.open === "boolean");
+  const anyClosed = detailsElements.some((el) => !el.open);
+  assert.equal(anyClosed, true);
+
+  detailsElements.forEach((el) => { el.open = true; });
+  const allOpenNow = detailsElements.every((el) => el.open);
+  assert.equal(allOpenNow, true);
 });

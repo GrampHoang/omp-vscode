@@ -494,7 +494,7 @@
   }
 
   function toggleAllCollapses(forcedExpand) {
-    const collapses = Array.prototype.slice.call(document.querySelectorAll(".collapse"));
+    const collapses = Array.prototype.slice.call(document.querySelectorAll("details.collapse"));
     if (!collapses.length) return;
     const anyClosed = collapses.some(function (el) { return !el.open; });
     const shouldExpand = forcedExpand !== undefined ? Boolean(forcedExpand) : anyClosed;
@@ -1496,8 +1496,12 @@
     if (modelLabel) modelLabel.textContent = shortModelName(state.model || "Model");
     if (modelBtn) modelBtn.title = "Model: " + (state.model || "Default");
     if (thinkingLabel) {
-      const lvl = state.thinkingLevel && state.thinkingLevel.trim() ? state.thinkingLevel.trim() : "auto";
-      thinkingLabel.textContent = "Thinking: " + lvl;
+      if (state.reasoningSupported === false) {
+        thinkingLabel.textContent = "Thinking: off";
+      } else {
+        const lvl = state.thinkingLevel && state.thinkingLevel.trim() ? state.thinkingLevel.trim() : "auto";
+        thinkingLabel.textContent = "Thinking: " + lvl;
+      }
     }
     if (thinkingBtn) {
       if (state.reasoningSupported === false) {
@@ -2700,9 +2704,16 @@
   if (moreBtn) moreBtn.addEventListener("click", function () { vscode.postMessage({ type: "moreMenu" }); });
   if (togglesBtn) togglesBtn.addEventListener("click", function () { vscode.postMessage({ type: "showTogglesMenu" }); });
   attachBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachMenu" }); });
-  attachFolderBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachFolder" }); });
+  if (attachFilesBtn) attachFilesBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachFiles" }); });
+  if (attachFolderBtn) attachFolderBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachFolder" }); });
   modelBtn.addEventListener("click", function () { vscode.postMessage({ type: "pickModel" }); });
-  if (thinkingBtn) thinkingBtn.addEventListener("click", function () { vscode.postMessage({ type: "pickThinkingLevel" }); });
+  if (thinkingBtn) thinkingBtn.addEventListener("click", function () {
+    if (state.reasoningSupported === false) {
+      return;
+    }
+    vscode.postMessage({ type: "pickThinkingLevel" });
+  });
+  if (usageBtn) usageBtn.addEventListener("click", function () { vscode.postMessage({ type: "showUsage" }); });
   modeBtn.addEventListener("click", function () { vscode.postMessage({ type: "pickMode" }); });
 
   inputEl.addEventListener("keydown", function (e) {

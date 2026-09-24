@@ -429,6 +429,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       advisorEnabled: this.sessions.isAdvisorEnabled(),
       mode: this.mode,
       displayName: this.displayName,
+      contextUsage: this.sessions.getContextUsage(),
       tabs: this.sessions.getTabs(),
       activeTabId: this.sessions.getActiveId(),
       uiQuestion: this.sessions.getUiQuestion(),
@@ -622,6 +623,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.postState();
   }
   private async pickThinkingLevelAndApply(): Promise<void> {
+    if (!this.sessions.isReasoningSupported()) {
+      vscode.window.showInformationMessage("The active model does not support thinking / reasoning.");
+      return;
+    }
     const cfg = vscode.workspace.getConfiguration("ompChat");
     const current = this.sessions.getThinkingLevel() || cfg.get<string>("thinking", "") || "auto";
     const levels: { label: string; detail?: string; value: string }[] = [
