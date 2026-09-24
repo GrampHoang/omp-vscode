@@ -135,6 +135,7 @@ export type HostToWebview =
       model?: string;
       thinkingLevel?: string;
       reasoningSupported?: boolean;
+      advisorEnabled?: boolean;
       mode?: string;
       displayName?: string;
       contextUsage?: ContextUsage | null;
@@ -152,6 +153,7 @@ export type HostToWebview =
       model?: string;
       thinkingLevel?: string;
       reasoningSupported?: boolean;
+      advisorEnabled?: boolean;
       mode?: string;
       displayName?: string;
       contextUsage?: ContextUsage | null;
@@ -207,7 +209,7 @@ export type WebviewToHost =
   | { type: "openFile"; path: string; line?: number; endLine?: number }
   | { type: "openExternal"; url: string }
   | { type: "searchFiles"; query: string; requestId: number }
-  | { type: "runSlashCommand"; command: string }
+  | { type: "runSlashCommand"; command: string; args?: string }
   | {
       type: "answerUiQuestion";
       id: string;

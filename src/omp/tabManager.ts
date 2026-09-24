@@ -449,6 +449,14 @@ export class TabManager {
   async setThinkingLevel(level: string): Promise<void> {
     await this.active().setThinkingLevel(level);
   }
+
+  isAdvisorEnabled(): boolean {
+    return this.active().isAdvisorEnabled();
+  }
+
+  async toggleAdvisor(target?: "on" | "off" | "toggle"): Promise<void> {
+    await this.active().toggleAdvisor(target);
+  }
   async refreshSessionState(): Promise<void> {
     await this.active().refreshSessionState();
   }

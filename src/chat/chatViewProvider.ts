@@ -56,6 +56,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             model: this.currentModelLabel(),
             thinkingLevel: this.sessions.getThinkingLevel(),
             reasoningSupported: this.sessions.isReasoningSupported(),
+            advisorEnabled: this.sessions.isAdvisorEnabled(),
             mode: this.mode,
             displayName: this.displayName,
           });
@@ -153,9 +154,20 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           this.post({ type: "error", message });
         });
         break;
-      case "send":
+      case "send": {
+        const text = (msg.text || "").trim();
+        if (text.startsWith("/")) {
+          const parts = text.slice(1).split(/\s+/);
+          const cmd = (parts[0] || "").toLowerCase();
+          const args = parts.slice(1).join(" ");
+          if (this.isSlashCommand(cmd)) {
+            await this.runSlashCommand(cmd, args);
+            break;
+          }
+        }
         await this.sessions.send(msg.text);
         break;
+      }
       case "stop":
         this.sessions.abort();
         break;
@@ -290,7 +302,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         await this.searchFiles(msg.query || "", msg.requestId);
         break;
       case "runSlashCommand":
-        await this.runSlashCommand(msg.command);
+        await this.runSlashCommand(msg.command, msg.args);
         break;
       case "answerUiQuestion":
         this.sessions.answerUiQuestion(msg.id, {
@@ -408,6 +420,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       model: this.currentModelLabel(),
       thinkingLevel: this.sessions.getThinkingLevel(),
       reasoningSupported: this.sessions.isReasoningSupported(),
+      advisorEnabled: this.sessions.isAdvisorEnabled(),
       mode: this.mode,
       displayName: this.displayName,
       tabs: this.sessions.getTabs(),
@@ -1078,8 +1091,33 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     return results.slice(0, 25);
   }
 
-  private async runSlashCommand(command: string): Promise<void> {
+  private isSlashCommand(command: string): boolean {
     const id = (command || "").trim().replace(/^\//, "").toLowerCase();
+    const known: Record<string, true> = {
+      new: true,
+      clear: true,
+      stop: true,
+      restart: true,
+      model: true,
+      thinking: true,
+      advisor: true,
+      mode: true,
+      attach: true,
+      files: true,
+      folder: true,
+      terminal: true,
+      cmd: true,
+      usage: true,
+      history: true,
+      tabs: true,
+      help: true,
+    };
+    return Boolean(known[id]);
+  }
+
+  private async runSlashCommand(command: string, args?: string): Promise<void> {
+    const id = (command || "").trim().replace(/^\//, "").toLowerCase();
+    const argText = (args || "").trim();
     switch (id) {
       case "new":
       case "clear":
@@ -1094,6 +1132,33 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "model":
         await this.pickModelAndApply();
         break;
+      case "thinking":
+        if (argText) {
+          await this.sessions.setThinkingLevel(argText);
+          await vscode.workspace
+            .getConfiguration("ompChat")
+            .update("thinking", argText, vscode.ConfigurationTarget.Workspace);
+        } else {
+          await this.pickThinkingLevelAndApply();
+        }
+        break;
+      case "advisor": {
+        const sub = argText.toLowerCase();
+        if (sub === "on" || sub === "off" || sub === "status") {
+          await this.sessions.send(`/advisor ${sub}`);
+        } else {
+          const items: vscode.QuickPickItem[] = [
+            { label: "$(play) Turn Advisor On", description: "/advisor on" },
+            { label: "$(stop) Turn Advisor Off", description: "/advisor off" },
+            { label: "$(info) Show Advisor Status", description: "/advisor status" },
+          ];
+          const picked = await vscode.window.showQuickPick(items, { title: "OMP Advisor" });
+          if (picked?.description) {
+            await this.sessions.send(picked.description);
+          }
+        }
+        break;
+      }
       case "mode":
         await this.pickModeAndApply();
         break;
@@ -1108,30 +1173,29 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "cmd":
         await this.attachTerminal();
         break;
-      case "usage":
-        {
-          const usage = this.sessions.getContextUsage();
-          const model = this.currentModelLabel();
-          if (!usage) {
-            vscode.window.showInformationMessage(`Model: ${model}\nContext usage: unavailable yet`);
-          } else {
-            vscode.window.showInformationMessage(
-              `Model: ${model}\nContext: ${usage.tokens.toLocaleString()} / ${usage.contextWindow.toLocaleString()} tokens (${usage.percent.toFixed(2)}%)`,
-            );
-          }
+      case "usage": {
+        const usage = this.sessions.getContextUsage();
+        const model = this.currentModelLabel();
+        if (!usage) {
+          vscode.window.showInformationMessage(`Model: ${model}\nContext usage: unavailable yet`);
+        } else {
+          vscode.window.showInformationMessage(
+            `Model: ${model}\nContext: ${usage.tokens.toLocaleString()} / ${usage.contextWindow.toLocaleString()} tokens (${usage.percent.toFixed(2)}%)`,
+          );
         }
         break;
+      }
       case "history":
       case "tabs":
         await this.showTabPicker();
         break;
       case "help":
         vscode.window.showInformationMessage(
-          "Commands: /new /stop /restart /model /mode /attach /folder /terminal /usage /history /help — Files/folders: type @ to mention inline; @terminal attaches CMD output",
+          "Commands: /new /stop /restart /model /thinking /advisor /mode /attach /folder /terminal /usage /history /help — Files/folders: type @ to mention inline; @terminal attaches CMD output",
         );
         break;
       default:
-        vscode.window.showWarningMessage(`Unknown command: /${id}`);
+        await this.sessions.send(`/${id}${argText ? " " + argText : ""}`);
         break;
     }
   }

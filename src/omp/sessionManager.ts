@@ -87,6 +87,7 @@ export class SessionManager {
   /** Wall-clock start for the currently open thinking block. */
   private thinkingStartedAt: number | undefined;
   private thinkingLevel: string | undefined;
+  private advisorEnabled = false;
   /** Delayed get_state polls while waiting for the async title extension. */
   private titleRefreshTimers: ReturnType<typeof setTimeout>[] = [];
 
@@ -201,6 +202,16 @@ export class SessionManager {
     }
     this.notify();
   }
+
+  isAdvisorEnabled(): boolean {
+    return this.advisorEnabled;
+  }
+
+  async toggleAdvisor(target?: "on" | "off" | "toggle"): Promise<void> {
+    const next = target === "toggle" || target === undefined ? !this.advisorEnabled : target === "on";
+    const cmd = next ? "/advisor on" : "/advisor off";
+    await this.send(cmd);
+  }
   private setStatus(status: SessionStatus): void {
     this.status = status;
     this._onDidChange.fire();
@@ -290,6 +301,27 @@ export class SessionManager {
       this.thinkingLevel = level;
       this.notify();
     });
+
+    client.on("commandOutput", (text) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        return;
+      }
+      if (/advisor enabled/i.test(trimmed)) {
+        this.advisorEnabled = true;
+      } else if (/advisor disabled/i.test(trimmed)) {
+        this.advisorEnabled = false;
+      }
+      const msg: ChatMessage = {
+        id: randomUUID(),
+        role: "system",
+        createdAt: Date.now(),
+        parts: [{ kind: "text", text: trimmed }],
+      };
+      this.messages.push(msg);
+      this.notify();
+    });
+
     client.on("error", (err) => {
       logError("omp RPC client error", err);
       this.setStatus({ state: "error", detail: err.message });

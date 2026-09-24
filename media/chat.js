@@ -84,6 +84,8 @@
     { id: "stop", label: "/stop", detail: "Stop generation" },
     { id: "restart", label: "/restart", detail: "Restart omp session" },
     { id: "model", label: "/model", detail: "Select model" },
+    { id: "thinking", label: "/thinking", detail: "Set or pick reasoning thinking level" },
+    { id: "advisor", label: "/advisor", detail: "Turn advisor on/off or check status (/advisor on|off|status)" },
     { id: "mode", label: "/mode", detail: "Select mode" },
     { id: "attach", label: "/attach", detail: "Attach files" },
     { id: "folder", label: "/folder", detail: "Attach a folder" },
