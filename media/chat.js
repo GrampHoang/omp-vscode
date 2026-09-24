@@ -1410,10 +1410,11 @@
       return "";
     }
     const partsSig = escapeHtml(partsSignature(msg.parts));
+    const visSig = `${state.showThinking !== false}:${state.showTools !== false}:${state.showTerminal !== false}`;
     const isSystemOk = msg.role === "system" && /enabled|success|ready|connected/i.test(partsHtml);
     const isSystemErr = msg.role === "system" && /error|failed|fault|crash/i.test(partsHtml);
     const systemStatusClass = isSystemOk ? " ok" : (isSystemErr ? " error" : "");
-    return `<article class="msg ${msg.role}${systemStatusClass}" data-id="${msg.id}" data-parts-sig="${partsSig}">
+    return `<article class="msg ${msg.role}${systemStatusClass}" data-id="${msg.id}" data-parts-sig="${partsSig}" data-vis-sig="${visSig}">
       <div class="role">${msg.role}</div>
       ${partsHtml || fallback}
       ${attachmentsHtml}
@@ -1661,15 +1662,17 @@
         const prevScrollTop = messagesEl.scrollTop;
         const prevScrollHeight = messagesEl.scrollHeight;
         const shouldStick = stickToBottom || isNearBottom(messagesEl, 80);
+        const currentVisSig = `${state.showThinking !== false}:${state.showTools !== false}:${state.showTerminal !== false}`;
+        const existingVisSig = existing ? existing.getAttribute("data-vis-sig") : null;
         const canPatch =
           Boolean(existing) &&
           messagesEl.lastElementChild === existing &&
           last.role === "assistant" &&
-          last.streaming;
+          last.streaming &&
+          existingVisSig === currentVisSig;
         if (canPatch) {
           const signature = partsSignature(last.parts);
           const existingSig = existing.getAttribute("data-parts-sig") || "";
-          // Remount when thinking/tool/text structure changes so we never write the
           // newest thinking stream into an older Thought block.
           if (signature !== existingSig) {
             existing.outerHTML = renderMessage(last);

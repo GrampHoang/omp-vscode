@@ -123,7 +123,11 @@ test("Scenario 3: Fast-path canPatch succeeds during streaming when intermediate
   const mockElement = (id = "") => {
     const el = {
       tagName: "ARTICLE",
-      getAttribute: (attr) => (attr === "data-parts-sig" ? "text" : id),
+      getAttribute: (attr) => {
+        if (attr === "data-parts-sig") return "text";
+        if (attr === "data-vis-sig") return "false:false:false";
+        return id;
+      },
       setAttribute: () => {},
       addEventListener: () => {},
       classList: { add: () => {}, remove: () => {}, toggle: () => {} },
@@ -329,4 +333,97 @@ test("Scenario 4: Non-sticky full re-render correctly uses prevScrollTop and pre
 
   // Verify scrollTop was updated according to delta without throwing
   assert.ok(scrollTop >= 100);
+});
+test("Scenario 5: Live thinking toggle forces remount and cleanly removes thinking block during streaming", () => {
+  const code = fs.readFileSync("media/chat.js", "utf8");
+
+  globalThis.Node = { TEXT_NODE: 3, ELEMENT_NODE: 1 };
+  const mockEl = () => ({
+    tagName: "DIV",
+    addEventListener: () => {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: {},
+    setAttribute: () => {},
+    getAttribute: () => null,
+    hidden: false,
+    children: [],
+    childNodes: [],
+    innerHTML: "",
+    textContent: "",
+    contains: () => false,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  });
+
+  let innerHtmlContent = "";
+  const messagesEl = {
+    tagName: "MAIN",
+    addEventListener: () => {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: {},
+    children: [],
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    get scrollHeight() { return 500; },
+    get scrollTop() { return 0; },
+    set scrollTop(v) {},
+    get innerHTML() { return innerHtmlContent; },
+    set innerHTML(val) {
+      innerHtmlContent = val;
+    },
+    get lastElementChild() { return this.children[this.children.length - 1] || null; }
+  };
+
+  let messageHandler = null;
+  const jsdom = {
+    getElementById: (id) => (id === "messages" ? messagesEl : mockEl()),
+    addEventListener: (event, handler) => {
+      if (event === "message") messageHandler = handler;
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  };
+
+  globalThis.document = jsdom;
+  globalThis.window = jsdom;
+  globalThis.acquireVsCodeApi = () => ({ postMessage: () => {} });
+
+  const fn = new Function(code);
+  fn();
+
+  // 1. Initial state with showThinking = true
+  messageHandler({
+    data: {
+      type: "ready",
+      status: { state: "busy" },
+      showThinking: true,
+      messages: [
+        {
+          id: "m_stream",
+          role: "assistant",
+          streaming: true,
+          parts: [
+            { kind: "thinking", text: "Streaming thought here..." },
+            { kind: "text", text: "Answer start" }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.ok(innerHtmlContent.includes("thinking"), "Must initially render thinking block");
+  assert.ok(innerHtmlContent.includes('data-vis-sig="true:true:true"'), "Must carry visibility signature");
+
+  // 2. User toggles showThinking = false via config
+  messageHandler({
+    data: {
+      type: "config",
+      showThinking: false,
+    }
+  });
+
+  // Verify that canPatch was bypassed because data-vis-sig changed, and full render cleanly removed the thinking block!
+  assert.equal(innerHtmlContent.includes("collapse thinking"), false, "Thinking block must be completely removed when toggled off");
+  assert.ok(innerHtmlContent.includes("Answer start"), "Text answer must remain visible");
+  assert.ok(innerHtmlContent.includes('data-vis-sig="false:true:true"'), "Updated article must carry new visibility signature");
 });
