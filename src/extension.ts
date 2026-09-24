@@ -124,6 +124,17 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand("ompChat.toggleCollapseAll", () => {
+      provider.toggleCollapseAll();
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("ompChat.toggleThinkingVisibility", async () => {
+      await provider.toggleThinkingVisibility();
+    }),
+  );
+  context.subscriptions.push(
     vscode.commands.registerCommand(
       "ompChat.attachExplorer",
       async (uri?: vscode.Uri, uris?: vscode.Uri[]) => {

@@ -185,6 +185,7 @@ export type WebviewToHost =
   | { type: "pickMode" }
   | { type: "showUsage" }
   | { type: "showTogglesMenu" }
+  | { type: "toggleThinkingVisibility" }
   | { type: "attachMenu" }
   | { type: "attachFiles" }
   | { type: "attachFolder" }

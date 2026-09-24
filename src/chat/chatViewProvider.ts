@@ -219,6 +219,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "showTogglesMenu":
         await this.showTogglesMenu();
         break;
+      case "toggleThinkingVisibility":
+        await this.toggleThinkingVisibility();
+        break;
       case "attachMenu":
         await this.showAttachMenu();
         break;
@@ -662,6 +665,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.post({ type: "toggleCollapseAll", expand });
   }
 
+  async toggleThinkingVisibility(): Promise<void> {
+    const cfg = vscode.workspace.getConfiguration("ompChat");
+    const current = cfg.get<boolean>("showThinking", true);
+    await cfg.update("showThinking", !current, vscode.ConfigurationTarget.Global);
+    this.post({ type: "config", showThinking: !current });
+  }
   private async showTogglesMenu(): Promise<void> {
     const cfg = vscode.workspace.getConfiguration("ompChat");
     const showThinking = cfg.get<boolean>("showThinking", true);
@@ -1252,7 +1261,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         );
         break;
       default:
-        await this.sessions.send(`/${id}${argText ? " " + argText : ""}`);
+        await this.sessions.send(`/${id}${argText ? ` ${argText}` : ""}`);
         break;
     }
   }

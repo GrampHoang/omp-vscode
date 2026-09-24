@@ -2677,6 +2677,16 @@
     if (e.key === "Escape" && queueMenuOpen) {
       closeQueueMenu();
     }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "o") {
+      e.preventDefault();
+      toggleAllCollapses();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "t") {
+      e.preventDefault();
+      vscode.postMessage({ type: "toggleThinkingVisibility" });
+      return;
+    }
   });
 
   if (messagesEl) {
