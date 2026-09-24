@@ -24,7 +24,7 @@
   const thinkingBtn = document.getElementById("thinkingBtn");
   const modeBtn = document.getElementById("modeBtn");
   const modelLabel = document.getElementById("modelLabel");
-  const thinkingLabel = document.getElementById("thinkingLabel");
+  const thinkingLabelEl = document.getElementById("thinkingLabel");
   const modeLabel = document.getElementById("modeLabel");
   const greetingTitle = document.getElementById("greetingTitle");
   const usageBtn = document.getElementById("usageBtn");
@@ -1495,12 +1495,12 @@
     }
     if (modelLabel) modelLabel.textContent = shortModelName(state.model || "Model");
     if (modelBtn) modelBtn.title = "Model: " + (state.model || "Default");
-    if (thinkingLabel) {
+    if (thinkingLabelEl) {
       if (state.reasoningSupported === false) {
-        thinkingLabel.textContent = "Thinking: off";
+        thinkingLabelEl.textContent = "Thinking: off";
       } else {
         const lvl = state.thinkingLevel && state.thinkingLevel.trim() ? state.thinkingLevel.trim() : "auto";
-        thinkingLabel.textContent = "Thinking: " + lvl;
+        thinkingLabelEl.textContent = "Thinking: " + lvl;
       }
     }
     if (thinkingBtn) {
