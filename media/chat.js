@@ -56,6 +56,7 @@
     model: "Model",
     thinkingLevel: "auto",
     reasoningSupported: true,
+    advisorEnabled: false,
     mode: "Agent",
     displayName: "",
     contextUsage: null,
@@ -1711,6 +1712,7 @@
       renderActiveQuestion();
       renderUiQuestion();
       syncThinkingTimer();
+      if (togglesPopover && !togglesPopover.hidden) renderTogglesPopover();
     } catch (err) {
       console.error("OMP Chat render failed", err);
       if (statusDot) {
@@ -2699,35 +2701,6 @@
       if (thinkingPopover && !thinkingPopover.hidden) thinkingPopover.hidden = true;
       if (togglesPopover && !togglesPopover.hidden) togglesPopover.hidden = true;
     }
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "o") {
-      e.preventDefault();
-      toggleAllCollapses();
-      return;
-    }
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "o") {
-      e.preventDefault();
-      state.showTools = state.showTools === false ? true : false;
-      render();
-      renderTogglesPopover();
-      vscode.postMessage({ type: "toggleToolsVisibility" });
-      return;
-    }
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "t") {
-      e.preventDefault();
-      state.showThinking = state.showThinking === false ? true : false;
-      render();
-      renderTogglesPopover();
-      vscode.postMessage({ type: "toggleThinkingVisibility" });
-      return;
-    }
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "t") {
-      e.preventDefault();
-      state.showTerminal = state.showTerminal === false ? true : false;
-      render();
-      renderTogglesPopover();
-      vscode.postMessage({ type: "toggleTerminalVisibility" });
-      return;
-    }
   });
 
   if (messagesEl) {
@@ -3347,8 +3320,8 @@
         showTerminal: msg.showTerminal !== false,
         thinkingLevel: msg.thinkingLevel != null ? msg.thinkingLevel : state.thinkingLevel,
         reasoningSupported: msg.reasoningSupported !== false,
+        advisorEnabled: Boolean(msg.advisorEnabled),
         mode: msg.mode || state.mode,
-        displayName: msg.displayName || state.displayName,
         contextUsage: msg.contextUsage != null ? msg.contextUsage : state.contextUsage,
         tabs: msg.tabs || [],
         activeTabId: nextTabId,
@@ -3403,8 +3376,8 @@
       if (msg.showTerminal != null) state.showTerminal = msg.showTerminal !== false;
       if (msg.thinkingLevel != null) state.thinkingLevel = msg.thinkingLevel;
       if (msg.reasoningSupported != null) state.reasoningSupported = msg.reasoningSupported !== false;
+      if (msg.advisorEnabled != null) state.advisorEnabled = Boolean(msg.advisorEnabled);
       if (msg.mode != null) state.mode = msg.mode;
-      if (msg.displayName != null) state.displayName = msg.displayName;
       if (msg.contextUsage !== undefined) state.contextUsage = msg.contextUsage;
       if (msg.tabs) state.tabs = msg.tabs;
       if (msg.activeTabId) state.activeTabId = msg.activeTabId;

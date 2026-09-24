@@ -289,18 +289,6 @@
         "key": "ctrl+shift+'",
         "mac": "cmd+shift+'",
         "when": "editorTextFocus && editorHasSelection"
-      },
-      {
-        "command": "ompChat.toggleCollapseAll",
-        "key": "ctrl+o",
-        "mac": "cmd+o",
-        "when": "focusedView == 'ompChat.sidebar' || focusedView == 'ompChatDev.sidebar'"
-      },
-      {
-        "command": "ompChat.toggleTerminalVisibility",
-        "key": "ctrl+shift+t",
-        "mac": "cmd+shift+t",
-        "when": "focusedView == 'ompChat.sidebar' || focusedView == 'ompChatDev.sidebar'"
       }
     ]
   },

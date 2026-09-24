@@ -325,19 +325,9 @@ export class SessionManager {
       if (!trimmed) {
         return;
       }
-      if (/^advisor (?:is )?enabled\.?$/i.test(trimmed)) {
+      if (/advisor (?:is )?enabled/i.test(trimmed)) {
         this.advisorEnabled = true;
-        this.notify();
-        return;
-      }
-      if (/^advisor (?:is )?disabled\.?$/i.test(trimmed)) {
-        this.advisorEnabled = false;
-        this.notify();
-        return;
-      }
-      if (/advisor is enabled/i.test(trimmed)) {
-        this.advisorEnabled = true;
-      } else if (/advisor is disabled/i.test(trimmed)) {
+      } else if (/advisor (?:is )?disabled/i.test(trimmed)) {
         this.advisorEnabled = false;
       }
       const msg: ChatMessage = {
