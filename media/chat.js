@@ -1658,15 +1658,18 @@
       if (hasMessages) {
         const last = transcript[transcript.length - 1];
         const existing = messagesEl.querySelector(`.msg[data-id="${last.id}"]`);
+        const prevScrollTop = messagesEl.scrollTop;
+        const prevScrollHeight = messagesEl.scrollHeight;
+        const shouldStick = stickToBottom || isNearBottom(messagesEl, 80);
+        const visibleTranscriptCount = transcript.reduce(function (count, m) {
+          const rendered = renderMessage(m);
+          return rendered.trim() ? count + 1 : count;
+        }, 0);
         const canPatch =
           existing &&
           last.role === "assistant" &&
           last.streaming &&
-          messagesEl.children.length === transcript.length;
-        const prevScrollTop = messagesEl.scrollTop;
-        const prevScrollHeight = messagesEl.scrollHeight;
-        const shouldStick = stickToBottom || isNearBottom(messagesEl, 80);
-
+          messagesEl.children.length === visibleTranscriptCount;
         if (canPatch) {
           const signature = partsSignature(last.parts);
           const existingSig = existing.getAttribute("data-parts-sig") || "";
