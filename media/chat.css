@@ -76,6 +76,7 @@ button {
   min-width: 0; max-width: 100%;
 }
 .msg { display: flex; flex-direction: column; gap: 6px; max-width: 100%; min-width: 0; }
+.msg:empty { display: none !important; }
 .role { display: none; }
 .bubble {
   border: none; background: transparent; padding: 0;
@@ -352,12 +353,14 @@ button {
   background: transparent;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: anywhere;
   font-family: var(--font);
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--muted);
-  max-height: 220px;
-  overflow: auto;
+  height: auto;
+  max-height: none;
+  overflow: visible;
 }
 .tool-body {
   display: flex;

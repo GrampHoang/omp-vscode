@@ -1388,11 +1388,14 @@
     const partsHtml = (msg.parts || [])
       .map(function (part, idx) {
         if (part.kind === "text") {
+          const text = part.text || "";
+          if (!text.trim() && !msg.streaming) return "";
           const cls = msg.streaming && idx === msg.parts.length - 1 ? " streaming" : "";
-          return `<div class="bubble${cls}">${renderMarkdownish(part.text || (msg.streaming ? "" : ""))}</div>`;
+          return `<div class="bubble${cls}">${renderMarkdownish(text)}</div>`;
         }
         return renderPart(part, msg, idx);
       })
+      .filter(Boolean)
       .join("");
 
     const attachmentsHtml = renderMessageAttachments(msg.attachments);
@@ -1402,6 +1405,10 @@
         ? generatingHtml()
         : "";
 
+    const visibleContent = (partsHtml || fallback || attachmentsHtml || "").trim();
+    if (!visibleContent && msg.role !== "user") {
+      return "";
+    }
     const partsSig = escapeHtml(partsSignature(msg.parts));
     const isSystemOk = msg.role === "system" && /enabled|success|ready|connected/i.test(partsHtml);
     const isSystemErr = msg.role === "system" && /error|failed|fault|crash/i.test(partsHtml);
