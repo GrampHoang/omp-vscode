@@ -71,18 +71,20 @@ button {
 
 /* ---- messages ---- */
 .messages {
-  flex: 1; overflow: auto; padding: 8px 14px 10px;
+  flex: 1; overflow-y: auto; overflow-x: hidden; padding: 8px 14px 10px;
   display: flex; flex-direction: column; gap: 14px;
+  min-width: 0; max-width: 100%;
 }
-.msg { display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
+.msg { display: flex; flex-direction: column; gap: 6px; max-width: 100%; min-width: 0; }
 .role { display: none; }
 .bubble {
   border: none; background: transparent; padding: 0;
-  width: 100%; line-height: 1.55; white-space: normal; word-break: break-word;
+  width: 100%; max-width: 100%; min-width: 0;
+  line-height: 1.55; white-space: normal; word-break: break-word;
 }
 .msg.user .bubble {
   background: var(--chip); border: 1px solid var(--border);
-  border-radius: 12px; padding: 10px 12px; width: 100%; max-width: 100%;
+  border-radius: 12px; padding: 10px 12px; width: 100%; max-width: 100%; min-width: 0;
 }
 .msg.system .bubble {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
@@ -520,7 +522,12 @@ button {
   background: color-mix(in srgb, var(--text) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
 }
-.md-code { margin: 8px 0; }
+.md-code {
+  margin: 8px 0;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
 .md-code .md-pre code {
   padding: 0;
   border: none;
@@ -528,12 +535,14 @@ button {
   font-size: 12px;
 }
 .bubble pre, .md-pre {
-  margin: 0; padding: 10px; border-radius: 10px; overflow: auto;
+  margin: 0; padding: 10px; border-radius: 10px;
+  overflow-x: auto; overflow-y: hidden;
+  box-sizing: border-box; max-width: 100%; min-width: 0;
   background: color-mix(in srgb, #000 35%, var(--bg));
   border: 1px solid var(--border); font-family: var(--mono); font-size: 12px;
   white-space: pre; line-height: 1.45;
 }
-.code-actions { display: flex; gap: 4px; margin: 4px 0 2px; }
+.code-actions { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; max-width: 100%; }
 .mini {
   font-size: 11px; padding: 3px 7px; border-radius: 6px;
   border: 1px solid var(--border); color: var(--muted);
