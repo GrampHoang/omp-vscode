@@ -125,6 +125,10 @@
       {
         "command": "ompChat.toggleThinkingVisibility",
         "title": "OMP: Toggle Thinking Blocks Visibility"
+      },
+      {
+        "command": "ompChat.toggleTerminalVisibility",
+        "title": "OMP: Toggle Terminal / Tool Run Blocks Visibility"
       }
     ],
     "menus": {
@@ -257,6 +261,11 @@
           "default": true,
           "description": "Show model thinking blocks in the chat UI."
         },
+        "ompChat.showTerminal": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show tool and terminal run blocks in the chat UI."
+        },
         "ompChat.logFileTouches": {
           "type": "boolean",
           "default": true,
@@ -283,7 +292,7 @@
         "when": "focusedView == 'ompChat.sidebar' || focusedView == 'ompChatDev.sidebar'"
       },
       {
-        "command": "ompChat.toggleThinkingVisibility",
+        "command": "ompChat.toggleTerminalVisibility",
         "key": "ctrl+shift+t",
         "mac": "cmd+shift+t",
         "when": "focusedView == 'ompChat.sidebar' || focusedView == 'ompChatDev.sidebar'"

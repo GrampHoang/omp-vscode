@@ -135,6 +135,11 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
   context.subscriptions.push(
+    vscode.commands.registerCommand("ompChat.toggleTerminalVisibility", async () => {
+      await provider.toggleTerminalVisibility();
+    }),
+  );
+  context.subscriptions.push(
     vscode.commands.registerCommand(
       "ompChat.attachExplorer",
       async (uri?: vscode.Uri, uris?: vscode.Uri[]) => {

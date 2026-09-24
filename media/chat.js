@@ -51,6 +51,7 @@
     messages: [],
     attachments: [],
     showThinking: true,
+    showTerminal: true,
     model: "Model",
     thinkingLevel: "auto",
     reasoningSupported: true,
@@ -1194,6 +1195,7 @@
       );
     }
     if (part.kind === "tool") {
+      if (state.showTerminal === false) return "";
       const running = part.status === "running";
       const collapseId = "tool:" + String(part.id || part.name || "tool");
       // Keep tool/command cards collapsed until the user expands them.
@@ -2698,7 +2700,10 @@
     }
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "t") {
       e.preventDefault();
-      vscode.postMessage({ type: "toggleThinkingVisibility" });
+      state.showTerminal = !state.showTerminal;
+      render();
+      renderTogglesPopover();
+      vscode.postMessage({ type: "toggleTerminalVisibility" });
       return;
     }
   });
@@ -2768,6 +2773,7 @@
     if (!togglesPopover) return;
     const advOn = Boolean(state.advisorEnabled);
     const thkOn = state.showThinking !== false;
+    const termOn = state.showTerminal !== false;
 
     let html = '<div class="dropdown-header">Toggles</div>';
 
@@ -2789,7 +2795,16 @@
     html += '<span class="dropdown-badge' + (thkOn ? ' on' : '') + '">' + (thkOn ? 'ON' : 'OFF') + '</span>';
     html += '</button>';
 
-    // Row 3: Expand/Collapse All
+    // Row 3: Terminal / Tool Runs
+    html += '<button type="button" class="dropdown-item" data-action="toggle-terminal-vis">';
+    html += '<div class="dropdown-item-left">';
+    html += '<span class="dropdown-check">' + (termOn ? '✓' : '') + '</span>';
+    html += '<span class="dropdown-item-label">Terminal / Tool Runs</span>';
+    html += '</div>';
+    html += '<span class="dropdown-badge' + (termOn ? ' on' : '') + '">' + (termOn ? 'ON' : 'OFF') + '</span>';
+    html += '</button>';
+
+    // Row 4: Expand/Collapse All
     html += '<button type="button" class="dropdown-item" data-action="toggle-expand-all">';
     html += '<div class="dropdown-item-left">';
     html += '<span class="dropdown-check">⤢</span>';
@@ -2841,6 +2856,13 @@
         renderTogglesPopover();
         render();
         vscode.postMessage({ type: "toggleThinkingVisibility" });
+        return;
+      }
+      if (action === "toggle-terminal-vis") {
+        state.showTerminal = !state.showTerminal;
+        renderTogglesPopover();
+        render();
+        vscode.postMessage({ type: "toggleTerminalVisibility" });
         return;
       }
       if (action === "toggle-expand-all") {
@@ -3283,6 +3305,7 @@
         messages: msg.messages || [],
         attachments: msg.attachments || [],
         showThinking: msg.showThinking !== false,
+        showTerminal: msg.showTerminal !== false,
         model: msg.model || state.model,
         thinkingLevel: msg.thinkingLevel != null ? msg.thinkingLevel : state.thinkingLevel,
         reasoningSupported: msg.reasoningSupported !== false,
@@ -3338,6 +3361,7 @@
     }
     if (msg.type === "config") {
       if (msg.showThinking != null) state.showThinking = msg.showThinking !== false;
+      if (msg.showTerminal != null) state.showTerminal = msg.showTerminal !== false;
       if (msg.model != null) state.model = msg.model;
       if (msg.thinkingLevel != null) state.thinkingLevel = msg.thinkingLevel;
       if (msg.reasoningSupported != null) state.reasoningSupported = msg.reasoningSupported !== false;

@@ -132,6 +132,7 @@ export type HostToWebview =
       messages: ChatMessage[];
       attachments: Attachment[];
       showThinking: boolean;
+      showTerminal?: boolean;
       model?: string;
       thinkingLevel?: string;
       reasoningSupported?: boolean;
@@ -150,6 +151,7 @@ export type HostToWebview =
   | {
       type: "config";
       showThinking?: boolean;
+      showTerminal?: boolean;
       model?: string;
       thinkingLevel?: string;
       reasoningSupported?: boolean;
@@ -188,6 +190,7 @@ export type WebviewToHost =
   | { type: "showUsage" }
   | { type: "showTogglesMenu" }
   | { type: "toggleThinkingVisibility" }
+  | { type: "toggleTerminalVisibility" }
   | { type: "attachMenu" }
   | { type: "attachFiles" }
   | { type: "attachFolder" }
