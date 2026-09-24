@@ -438,6 +438,17 @@ export class TabManager {
     return this.active().getModelLabel();
   }
 
+  getThinkingLevel(): string | undefined {
+    return this.active().getThinkingLevel();
+  }
+
+  isReasoningSupported(): boolean {
+    return this.active().isReasoningSupported();
+  }
+
+  async setThinkingLevel(level: string): Promise<void> {
+    await this.active().setThinkingLevel(level);
+  }
   async refreshSessionState(): Promise<void> {
     await this.active().refreshSessionState();
   }

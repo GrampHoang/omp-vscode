@@ -86,6 +86,7 @@ export class SessionManager {
   private pendingUiQuestions: UiQuestion[] = [];
   /** Wall-clock start for the currently open thinking block. */
   private thinkingStartedAt: number | undefined;
+  private thinkingLevel: string | undefined;
   /** Delayed get_state polls while waiting for the async title extension. */
   private titleRefreshTimers: ReturnType<typeof setTimeout>[] = [];
 
@@ -178,6 +179,28 @@ export class SessionManager {
     return cfgModel && cfgModel.trim() ? cfgModel.trim() : "Model";
   }
 
+  getThinkingLevel(): string | undefined {
+    return this.thinkingLevel ?? (vscode.workspace.getConfiguration("ompChat").get<string>("thinking", "") || undefined);
+  }
+
+  isReasoningSupported(): boolean {
+    if (this.sessionModel) {
+      return Boolean(this.sessionModel.reasoning || this.sessionModel.thinking);
+    }
+    return true;
+  }
+
+  async setThinkingLevel(level: string): Promise<void> {
+    this.thinkingLevel = level;
+    if (this.client?.isReady) {
+      try {
+        await this.client.setThinkingLevel(level);
+      } catch (err) {
+        logWarn("Failed to set thinking level via RPC", err);
+      }
+    }
+    this.notify();
+  }
   private setStatus(status: SessionStatus): void {
     this.status = status;
     this._onDidChange.fire();
@@ -263,6 +286,10 @@ export class SessionManager {
       void this.onSessionReady(options);
     });
 
+    client.on("thinkingLevelChanged", (level) => {
+      this.thinkingLevel = level;
+      this.notify();
+    });
     client.on("error", (err) => {
       logError("omp RPC client error", err);
       this.setStatus({ state: "error", detail: err.message });
@@ -354,8 +381,8 @@ export class SessionManager {
     this.sessionId = undefined;
     this.sessionFile = undefined;
     this.sessionTitle = undefined;
+    this.thinkingLevel = undefined;
     this.notify();
-    // Always start a fresh session for New Chat.
     await this.start({ continueLastSession: false, resumeSessionId: undefined });
   }
 
@@ -1358,6 +1385,9 @@ export class SessionManager {
       if (typeof sessionName === "string" && sessionName.trim()) {
         this.setSessionTitle(sessionName);
       }
+      if (typeof state.thinkingLevel === "string") {
+        this.thinkingLevel = state.thinkingLevel;
+      }
       const modelRaw = state.model;
       if (modelRaw && typeof modelRaw === "object") {
         const m = modelRaw as Record<string, unknown>;
@@ -1366,6 +1396,8 @@ export class SessionManager {
           name: String(m.name ?? m.id ?? "Model"),
           provider: m.provider ? String(m.provider) : undefined,
           contextWindow: typeof m.contextWindow === "number" ? m.contextWindow : undefined,
+          reasoning: Boolean(m.reasoning),
+          thinking: m.thinking ? (m.thinking as unknown) : null,
         };
       }
       const fallbackWindow =

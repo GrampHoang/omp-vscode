@@ -96,6 +96,8 @@ export interface SessionModelInfo {
   name: string;
   provider?: string;
   contextWindow?: number;
+  reasoning?: boolean;
+  thinking?: unknown;
 }
 
 /** Workspace file / folder result for @-mention autocomplete */
@@ -131,6 +133,8 @@ export type HostToWebview =
       attachments: Attachment[];
       showThinking: boolean;
       model?: string;
+      thinkingLevel?: string;
+      reasoningSupported?: boolean;
       mode?: string;
       displayName?: string;
       contextUsage?: ContextUsage | null;
@@ -146,6 +150,8 @@ export type HostToWebview =
       type: "config";
       showThinking?: boolean;
       model?: string;
+      thinkingLevel?: string;
+      reasoningSupported?: boolean;
       mode?: string;
       displayName?: string;
       contextUsage?: ContextUsage | null;
@@ -172,6 +178,7 @@ export type WebviewToHost =
   | { type: "history" }
   | { type: "moreMenu" }
   | { type: "pickModel" }
+  | { type: "pickThinkingLevel" }
   | { type: "pickMode" }
   | { type: "showUsage" }
   | { type: "attachMenu" }

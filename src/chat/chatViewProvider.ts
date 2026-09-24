@@ -40,6 +40,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
         if (
           e.affectsConfiguration("ompChat.showThinking") ||
+          e.affectsConfiguration("ompChat.thinking") ||
           e.affectsConfiguration("ompChat.model") ||
           e.affectsConfiguration("ompChat.mode")
         ) {
@@ -53,6 +54,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
               .getConfiguration("ompChat")
               .get<boolean>("showThinking", true),
             model: this.currentModelLabel(),
+            thinkingLevel: this.sessions.getThinkingLevel(),
+            reasoningSupported: this.sessions.isReasoningSupported(),
             mode: this.mode,
             displayName: this.displayName,
           });
@@ -182,6 +185,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         break;
       case "pickModel":
         await this.pickModelAndApply();
+        break;
+      case "pickThinkingLevel":
+        await this.pickThinkingLevelAndApply();
         break;
       case "pickMode":
         await this.pickModeAndApply();
@@ -400,9 +406,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       attachments: this.sessions.getAttachments(),
       showThinking,
       model: this.currentModelLabel(),
+      thinkingLevel: this.sessions.getThinkingLevel(),
+      reasoningSupported: this.sessions.isReasoningSupported(),
       mode: this.mode,
       displayName: this.displayName,
-      contextUsage: this.sessions.getContextUsage(),
       tabs: this.sessions.getTabs(),
       activeTabId: this.sessions.getActiveId(),
       uiQuestion: this.sessions.getUiQuestion(),
@@ -536,6 +543,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
               <span id="modelLabel" class="pill-label">Model</span>
               <span class="chev">▾</span>
             </button>
+            <button id="thinkingBtn" class="pill" title="Thinking / reasoning level">
+              <span id="thinkingLabel" class="pill-label">Thinking</span>
+              <span class="chev">▾</span>
+            </button>
             <button id="modeBtn" class="pill" title="Mode">
               <span id="modeLabel" class="pill-label">Agent</span>
               <span class="chev">▾</span>
@@ -585,6 +596,46 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     });
     await this.sessions.restart();
     this.postState();
+  }
+  private async pickThinkingLevelAndApply(): Promise<void> {
+    const cfg = vscode.workspace.getConfiguration("ompChat");
+    const current = this.sessions.getThinkingLevel() || cfg.get<string>("thinking", "") || "auto";
+    const levels: { label: string; detail?: string; value: string }[] = [
+      { label: "off", detail: "Disable thinking / reasoning", value: "off" },
+      { label: "minimal", detail: "Minimal thinking tokens", value: "minimal" },
+      { label: "low", detail: "Low reasoning effort", value: "low" },
+      { label: "medium", detail: "Balanced reasoning effort", value: "medium" },
+      { label: "high", detail: "Thorough reasoning effort", value: "high" },
+      { label: "xhigh", detail: "Extra high reasoning effort", value: "xhigh" },
+      { label: "max", detail: "Maximum reasoning effort", value: "max" },
+      { label: "auto", detail: "Default model reasoning behavior", value: "" },
+    ];
+
+    const items: vscode.QuickPickItem[] = levels.map((lvl) => ({
+      label: `${lvl.value === current || (lvl.value === "" && current === "auto") ? "$(check) " : ""}${lvl.label}`,
+      description: lvl.detail,
+    }));
+
+    const picked = await vscode.window.showQuickPick(items, {
+      title: "Select OMP Thinking / Reasoning Level",
+      placeHolder: `Current: ${current}`,
+    });
+    if (!picked) return;
+
+    const rawLabel = picked.label.replace(/^\$\([a-z-]+\)\s*/, "");
+    const chosen = levels.find((l) => l.label === rawLabel);
+    if (chosen !== undefined) {
+      await this.sessions.setThinkingLevel(chosen.value);
+      await cfg.update("thinking", chosen.value, vscode.ConfigurationTarget.Workspace);
+      this.post({
+        type: "config",
+        thinkingLevel: chosen.value || "auto",
+        reasoningSupported: this.sessions.isReasoningSupported(),
+        model: this.currentModelLabel(),
+        mode: this.mode,
+        displayName: this.displayName,
+      });
+    }
   }
 
   private async pickModeAndApply(): Promise<void> {

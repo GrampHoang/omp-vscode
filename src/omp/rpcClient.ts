@@ -7,6 +7,8 @@ export interface OmpRpcClientEvents {
   ready: [];
   event: [OmpRpcEvent];
   messageUpdate: [AssistantMessageEvent];
+  thinkingLevelChanged: [string];
+  commandOutput: [string];
   stderr: [string];
   exit: [number | null];
   error: [Error];
@@ -129,9 +131,16 @@ export class OmpRpcClient extends EventEmitter {
         }
       }
 
+      if (event.type === "thinking_level_changed" && typeof event.thinkingLevel === "string") {
+        this.emit("thinkingLevelChanged", event.thinkingLevel);
+      }
+
+      if (event.type === "command_output" && typeof event.text === "string") {
+        this.emit("commandOutput", event.text);
+      }
+
       this.emit("event", event);
     });
-
     this.proc.stderr.setEncoding("utf8");
     this.proc.stderr.on("data", (chunk: string) => {
       const text = chunk.trim();
@@ -296,6 +305,21 @@ export class OmpRpcClient extends EventEmitter {
     response: { confirmed: boolean } | { value: string } | { cancelled: true; timedOut?: boolean },
   ): void {
     this.send({ type: "extension_ui_response", id, ...response });
+  }
+  async setThinkingLevel(level: string): Promise<void> {
+    const res = await this.request({ type: "set_thinking_level", level });
+    if (res.success === false) {
+      throw new Error(String(res.error ?? "set_thinking_level failed"));
+    }
+  }
+
+  async cycleThinkingLevel(): Promise<string | null> {
+    const res = await this.request({ type: "cycle_thinking_level" });
+    if (res.success === false) {
+      throw new Error(String(res.error ?? "cycle_thinking_level failed"));
+    }
+    const data = res.data as { level?: string } | string | null;
+    return typeof data === "string" ? data : (data?.level ?? null);
   }
 
   abort(): void {

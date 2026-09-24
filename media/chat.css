@@ -805,6 +805,14 @@ button {
   font-size: 12px; max-width: 150px;
 }
 .pill:hover { background: var(--hover); color: var(--text); }
+.pill.disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.pill.disabled:hover {
+  background: transparent;
+  color: var(--muted);
+}
 .pill .pill-label {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px;
 }

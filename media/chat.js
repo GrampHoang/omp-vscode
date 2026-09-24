@@ -20,8 +20,10 @@
   const attachmentsEl = document.getElementById("attachments");
   const dropOverlay = document.getElementById("dropOverlay");
   const modelBtn = document.getElementById("modelBtn");
+  const thinkingBtn = document.getElementById("thinkingBtn");
   const modeBtn = document.getElementById("modeBtn");
   const modelLabel = document.getElementById("modelLabel");
+  const thinkingLabel = document.getElementById("thinkingLabel");
   const modeLabel = document.getElementById("modeLabel");
   const greetingTitle = document.getElementById("greetingTitle");
   const usageBtn = document.getElementById("usageBtn");
@@ -47,6 +49,8 @@
     attachments: [],
     showThinking: true,
     model: "Model",
+    thinkingLevel: "auto",
+    reasoningSupported: true,
     mode: "Agent",
     displayName: "",
     contextUsage: null,
@@ -1468,6 +1472,19 @@
     }
     if (modelLabel) modelLabel.textContent = shortModelName(state.model || "Model");
     if (modelBtn) modelBtn.title = "Model: " + (state.model || "Default");
+    if (thinkingLabel) {
+      const lvl = state.thinkingLevel && state.thinkingLevel.trim() ? state.thinkingLevel.trim() : "auto";
+      thinkingLabel.textContent = "Thinking: " + lvl;
+    }
+    if (thinkingBtn) {
+      if (state.reasoningSupported === false) {
+        thinkingBtn.classList.add("disabled");
+        thinkingBtn.title = "Model does not support reasoning";
+      } else {
+        thinkingBtn.classList.remove("disabled");
+        thinkingBtn.title = "Thinking level: " + (state.thinkingLevel || "auto");
+      }
+    }
     if (modeLabel) modeLabel.textContent = state.mode || "Agent";
     if (greetingTitle) {
       greetingTitle.textContent = state.displayName
@@ -1580,7 +1597,7 @@
       sendBtn.setAttribute("aria-label", busy ? "Queue" : "Send");
       sendBtn.classList.toggle("queue", busy);
       setComposerEnabled(interactable);
-      [newChatBtn, historyBtn, moreBtn, attachBtn, attachFilesBtn, attachFolderBtn, modelBtn, modeBtn, usageBtn, queueToggleEl]
+      [newChatBtn, historyBtn, moreBtn, attachBtn, attachFilesBtn, attachFolderBtn, modelBtn, thinkingBtn, modeBtn, usageBtn, queueToggleEl]
         .filter(Boolean)
         .forEach(function (btn) { btn.disabled = !interactable; });
 
@@ -2652,7 +2669,7 @@
   attachFilesBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachFiles" }); });
   attachFolderBtn.addEventListener("click", function () { vscode.postMessage({ type: "attachFolder" }); });
   modelBtn.addEventListener("click", function () { vscode.postMessage({ type: "pickModel" }); });
-  if (usageBtn) usageBtn.addEventListener("click", function () { vscode.postMessage({ type: "showUsage" }); });
+  if (thinkingBtn) thinkingBtn.addEventListener("click", function () { vscode.postMessage({ type: "pickThinkingLevel" }); });
   modeBtn.addEventListener("click", function () { vscode.postMessage({ type: "pickMode" }); });
 
   inputEl.addEventListener("keydown", function (e) {
@@ -3089,6 +3106,8 @@
         attachments: msg.attachments || [],
         showThinking: msg.showThinking !== false,
         model: msg.model || state.model,
+        thinkingLevel: msg.thinkingLevel != null ? msg.thinkingLevel : state.thinkingLevel,
+        reasoningSupported: msg.reasoningSupported !== false,
         mode: msg.mode || state.mode,
         displayName: msg.displayName || state.displayName,
         contextUsage: msg.contextUsage != null ? msg.contextUsage : state.contextUsage,
@@ -3138,6 +3157,8 @@
     if (msg.type === "config") {
       if (msg.showThinking != null) state.showThinking = msg.showThinking !== false;
       if (msg.model != null) state.model = msg.model;
+      if (msg.thinkingLevel != null) state.thinkingLevel = msg.thinkingLevel;
+      if (msg.reasoningSupported != null) state.reasoningSupported = msg.reasoningSupported !== false;
       if (msg.mode != null) state.mode = msg.mode;
       if (msg.displayName != null) state.displayName = msg.displayName;
       if (msg.contextUsage !== undefined) state.contextUsage = msg.contextUsage;
