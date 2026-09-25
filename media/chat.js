@@ -189,12 +189,33 @@
     return s;
   }
 
+  function safeEncode(str) {
+    try {
+      return encodeURIComponent(str);
+    } catch (_) {
+      try {
+        return encodeURIComponent(unescape(encodeURI(str)));
+      } catch (_) {
+        return "";
+      }
+    }
+  }
+
+  function safeDecode(str) {
+    if (!str) return "";
+    try {
+      return decodeURIComponent(str);
+    } catch (_) {
+      return str;
+    }
+  }
+
   function renderCodeBlock(lang, code) {
     const clean = String(code || "").replace(/\n$/, "");
     const safe = escapeHtml(clean);
     return (
       '<div class="md-code">' +
-        '<div class="md-pre" data-code="' + encodeURIComponent(clean) + '"><code data-lang="' + escapeHtml(lang || "") + '">' + safe + "</code></div>" +
+        '<div class="md-pre" data-code="' + safeEncode(clean) + '"><code data-lang="' + escapeHtml(lang || "") + '">' + safe + "</code></div>" +
         '<div class="code-actions">' +
           '<button class="mini" data-action="copy-code">Copy</button>' +
           '<button class="mini" data-action="insert-code">Insert</button>' +
@@ -3086,7 +3107,7 @@
     const pre = (codeRoot && codeRoot.querySelector(".md-pre")) ||
       (btn.parentElement && btn.parentElement.previousElementSibling);
     const encoded = pre && pre.getAttribute && pre.getAttribute("data-code");
-    const text = encoded ? decodeURIComponent(encoded) : "";
+    const text = safeDecode(encoded);
     if (action === "copy-code" && text) vscode.postMessage({ type: "copy", text: text });
     if (action === "insert-code" && text) vscode.postMessage({ type: "insert", text: text });
   });
