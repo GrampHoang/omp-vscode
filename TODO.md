@@ -47,6 +47,24 @@ This document tracks upcoming features, improvements, and backlog items for the 
 
 ---
 
+## 🚀 Completed in v0.8.0 Fork & Live OMP Sync
+
+### Independent Extension Fork
+- [x] **Namespace & Identity Isolation:** Forked and packaged as `gramphoang.oh-my-pi-chat-extend` ("GramHoang OMP Chat Extend") with dedicated activity bar container (`OMP Extend`), commands (`ompChatExtend.*`), views, and separate storage to run side-by-side with upstream OMP Chat without conflicts.
+
+### Native OMP Synchronization (Decoupled from `settings.json`)
+- [x] **Zero `.vscode/settings.json` Writes:** Removed all writes and mandatory reads for `model`, `thinking`, `approvalMode`, and display toggles from `settings.json`.
+- [x] **Preserve OMP Global Config:** OMP launches with its native user defaults (`~/.omp/agent/config.yml`) without forced CLI flags.
+- [x] **Live Dynamic Model Switching:** Switched model live in active sessions using OMP RPC `set_model` (`{ type: "set_model", provider, modelId }`) without session restarts.
+- [x] **Live Thinking Level Switching:** Updated reasoning effort live using OMP RPC `set_thinking_level` and `cycle_thinking_level`.
+- [x] **RPC Available Models:** Implemented `get_available_models` via active RPC client.
+
+### Live Codex-Style Turn Progress & Action Status
+- [x] **Live Elapsed Turn Timer:** Real-time ticker (`1s`, `2s`, ... `14s`, `1m 02s`) measuring total elapsed time for active assistant turns.
+- [x] **Active Step / Action Badge:** Dynamic badge displaying the last/current action (`Running bash: npm test`, `Thinking: <snippet>`, `Completed tool · next step...`, `Responding...`) so users always know the model is actively progressing through multi-step tasks.
+
+---
+
 ## 🛠️ Stability & Performance Fixes (Investigated Issues)
 
 ### 5. Multi-Window Session File Contention & Queue Freeze
@@ -59,8 +77,6 @@ This document tracks upcoming features, improvements, and backlog items for the 
 - [ ] **The Problem:** In `src/omp/sessionHistory.ts:357`, historical tool outputs are hydrated using `outputPreview: textFromContent(row.content)`. Unlike live turns (which cap previews at 400–800 chars), `textFromContent` has no character limit. If a tool read a large file or dumped a huge terminal log, multi-megabyte raw text strings are loaded into message state. When `postState()` serializes this and the webview runs `messagesEl.innerHTML = ...`, Chromium freezes performing layout reflow and DOM parsing on hundreds of thousands of characters, triggering VS Code's "window not responding" watchdog and crashing the editor (while normal OMP CLI runs fine in its lightweight terminal buffer).
 - [ ] **Bounded Historical Previews:** Enforce a hard ceiling (e.g. max 1,000–2,000 characters) on historical tool output previews in `sessionHistory.ts`.
 - [ ] **Lazy-Mounted Tool Bodies:** Avoid injecting thousands of lines into the DOM for collapsed tool cards; only mount full outputs when the user explicitly clicks to expand that specific card.
-
----
 
 ## 💡 Backlog & Feature Suggestions
 

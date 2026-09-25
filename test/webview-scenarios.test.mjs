@@ -143,6 +143,7 @@ test("Scenario 3: Fast-path canPatch succeeds during streaming when intermediate
         return [];
       },
       contains: () => false,
+      insertAdjacentHTML: () => {},
       children: [],
       childNodes: [],
     };

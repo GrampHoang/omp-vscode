@@ -1003,6 +1003,55 @@ button {
   to { transform: rotate(360deg); }
 }
 
+/* ---- Live turn progress indicator (Codex-style: elapsed time + active step) ---- */
+.turn-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 6px 0 4px 8px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--panel) 75%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  font-family: var(--font-family);
+  line-height: 1.35;
+  user-select: none;
+  max-width: calc(100% - 16px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.turn-progress-spinner {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  border: 1.5px solid color-mix(in srgb, var(--link) 35%, transparent);
+  border-top-color: var(--link);
+  background: transparent;
+  flex: 0 0 auto;
+  animation: generating-spin 0.75s linear infinite;
+}
+.turn-progress-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--link);
+  flex: 0 0 auto;
+}
+.turn-progress-dot {
+  color: var(--muted);
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+.turn-progress-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--text) 85%, transparent);
+  font-weight: 500;
+}
+
 @media (max-width: 320px) {
   .suggestions { grid-template-columns: 1fr; }
 }

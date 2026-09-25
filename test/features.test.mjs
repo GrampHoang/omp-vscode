@@ -232,3 +232,45 @@ test("OMP start arguments omit model and thinking by default to preserve OMP glo
     "high",
   ]);
 });
+
+test("turn progress formats elapsed time and active tool/thinking action", () => {
+  const formatAction = (parts) => {
+    if (!parts || !parts.length) return "Thinking…";
+    const last = parts[parts.length - 1];
+    if (last.kind === "thinking") {
+      const text = (last.text || "").trim();
+      return text ? `Thinking: ${text.slice(0, 30)}` : "Thinking…";
+    }
+    if (last.kind === "tool") {
+      const toolName = last.name || "tool";
+      if (last.status === "running") {
+        return `Running ${toolName}: ${last.inputPreview || ""}`;
+      }
+      return `Completed ${toolName} · next step…`;
+    }
+    if (last.kind === "text") return "Responding…";
+    return "Working…";
+  };
+
+  assert.equal(formatAction([]), "Thinking…");
+  assert.equal(formatAction([{ kind: "thinking", text: "Analyzing project files" }]), "Thinking: Analyzing project files");
+  assert.equal(
+    formatAction([
+      { kind: "thinking", text: "done thinking" },
+      { kind: "tool", name: "bash", status: "running", inputPreview: "npm test" },
+    ]),
+    "Running bash: npm test"
+  );
+  assert.equal(
+    formatAction([
+      { kind: "tool", name: "bash", status: "done" },
+    ]),
+    "Completed bash · next step…"
+  );
+  assert.equal(
+    formatAction([
+      { kind: "text", text: "Here is the summary" },
+    ]),
+    "Responding…"
+  );
+});

@@ -1370,11 +1370,105 @@
   }
 
 
-  function generatingHtml() {
+  function getLastActionDescription(msg) {
+    if (!msg || !msg.parts || !msg.parts.length) {
+      return "Thinking…";
+    }
+    const last = msg.parts[msg.parts.length - 1];
+    if (!last) return "Working…";
+    if (last.kind === "thinking") {
+      const text = cleanThinkingText(last.text || "").trim();
+      if (!text) return "Thinking…";
+      const lines = text.split(/\r?\n/).filter(function (l) { return l.trim().length > 0; });
+      const lastLine = lines.length ? lines[lines.length - 1].trim() : "";
+      if (lastLine && lastLine.length > 50) {
+        return "Thinking: " + lastLine.slice(0, 48) + "…";
+      }
+      return lastLine ? "Thinking: " + lastLine : "Thinking…";
+    }
+    if (last.kind === "tool") {
+      const toolName = last.name || "tool";
+      if (last.status === "running") {
+        const preview = (last.inputPreview || "").trim().replace(/\s+/g, " ");
+        if (preview) {
+          const short = preview.length > 36 ? preview.slice(0, 34) + "…" : preview;
+          return "Running " + toolName + ": " + short;
+        }
+        return "Running " + toolName + "…";
+      }
+      return "Completed " + toolName + " · next step…";
+    }
+    if (last.kind === "text") {
+      return "Responding…";
+    }
+    return "Working…";
+  }
+
+  function turnProgressHtml(msg) {
+    if (!msg || !msg.streaming) return "";
+    const elapsedMs = Math.max(0, Date.now() - (msg.createdAt || Date.now()));
+    const timeStr = formatDuration(elapsedMs) || "<1s";
+    const actionLabel = getLastActionDescription(msg);
     return (
-      '<div class="generating" aria-live="polite">' +
-        '<span class="generating-spinner" aria-hidden="true"></span>' +
-        '<span class="generating-label">Generating…</span>' +
+      '<div class="turn-progress" data-turn-id="' + escapeHtml(msg.id) + '" aria-live="polite">' +
+        '<span class="turn-progress-spinner" aria-hidden="true"></span>' +
+        '<span class="turn-progress-time">' + escapeHtml(timeStr) + '</span>' +
+        '<span class="turn-progress-dot">·</span>' +
+        '<span class="turn-progress-label">' + escapeHtml(actionLabel) + '</span>' +
+      '</div>'
+    );
+  }
+
+  let turnProgressTimer = null;
+  function syncTurnProgressTimer() {
+    const hasStreaming = Boolean(document.querySelector(".turn-progress"));
+    if (!hasStreaming) {
+      if (turnProgressTimer) {
+        clearInterval(turnProgressTimer);
+        turnProgressTimer = null;
+      }
+      return;
+    }
+    if (turnProgressTimer) return;
+    turnProgressTimer = setInterval(function () {
+      const nodes = document.querySelectorAll(".turn-progress");
+      if (!nodes.length) {
+        clearInterval(turnProgressTimer);
+        turnProgressTimer = null;
+        return;
+      }
+      nodes.forEach(function (el) {
+        const id = el.getAttribute("data-turn-id");
+        const transcript = getTranscriptMessages();
+        const msg = transcript.find(function (m) { return m.id === id; });
+        if (!msg || !msg.streaming) {
+          el.remove();
+          return;
+        }
+        const timeEl = el.querySelector(".turn-progress-time");
+        const labelEl = el.querySelector(".turn-progress-label");
+        const elapsedMs = Math.max(0, Date.now() - (msg.createdAt || Date.now()));
+        const timeStr = formatDuration(elapsedMs) || "<1s";
+        if (timeEl && timeEl.textContent !== timeStr) {
+          timeEl.textContent = timeStr;
+        }
+        const nextAction = getLastActionDescription(msg);
+        if (labelEl && labelEl.textContent !== nextAction) {
+          labelEl.textContent = nextAction;
+        }
+      });
+    }, 500);
+  }
+
+  function generatingHtml(msg) {
+    const elapsedMs = msg ? Math.max(0, Date.now() - (msg.createdAt || Date.now())) : 0;
+    const timeStr = formatDuration(elapsedMs) || "<1s";
+    return (
+      '<div class="turn-progress generating" aria-live="polite">' +
+        '<span class="turn-progress-spinner" aria-hidden="true"></span>' +
+        '<span class="turn-progress-time">' + escapeHtml(timeStr) + '</span>' +
+        '<span class="turn-progress-dot">·</span>' +
+        '<span class="turn-progress-label">Thinking…</span>' +
       '</div>'
     );
   }
@@ -1463,8 +1557,9 @@
 
     const fallback =
       msg.role === "assistant" && msg.streaming && (!msg.parts || msg.parts.length === 0)
-        ? generatingHtml()
+        ? generatingHtml(msg)
         : "";
+    const progressHtml = msg.role === "assistant" && msg.streaming ? turnProgressHtml(msg) : "";
 
     const visibleContent = (partsHtml || fallback || attachmentsHtml || "").trim();
     if (!visibleContent) {
@@ -1478,7 +1573,7 @@
     return `<article class="msg ${msg.role}${systemStatusClass}" data-id="${msg.id}" data-parts-sig="${partsSig}" data-vis-sig="${visSig}">
       <div class="role">${msg.role}</div>
       ${partsHtml || fallback}
-      ${attachmentsHtml}
+      ${progressHtml}
     </article>`;
   }
 
@@ -1766,6 +1861,25 @@
             } else if (textPart && lastBubble == null) {
               existing.outerHTML = renderMessage(last);
             }
+
+            const progressEl = existing.querySelector(".turn-progress");
+            if (last.streaming) {
+              if (!progressEl) {
+                if (typeof existing.insertAdjacentHTML === "function") {
+                  existing.insertAdjacentHTML("beforeend", turnProgressHtml(last));
+                }
+              } else {
+                const timeEl = progressEl.querySelector(".turn-progress-time");
+                const labelEl = progressEl.querySelector(".turn-progress-label");
+                const elapsedMs = Math.max(0, Date.now() - (last.createdAt || Date.now()));
+                const timeStr = formatDuration(elapsedMs) || "<1s";
+                if (timeEl && timeEl.textContent !== timeStr) timeEl.textContent = timeStr;
+                const nextAction = getLastActionDescription(last);
+                if (labelEl && labelEl.textContent !== nextAction) labelEl.textContent = nextAction;
+              }
+            } else if (progressEl) {
+              progressEl.remove();
+            }
           }
         } else {
           messagesEl.innerHTML = transcript.map(renderMessage).join("");
@@ -1788,6 +1902,7 @@
       renderActiveQuestion();
       renderUiQuestion();
       syncThinkingTimer();
+      syncTurnProgressTimer();
       if (togglesPopover && !togglesPopover.hidden) renderTogglesPopover();
     } catch (err) {
       console.error("OMP Chat render failed", err);
