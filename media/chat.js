@@ -22,10 +22,10 @@
   const dropOverlay = document.getElementById("dropOverlay");
   const modelBtn = document.getElementById("modelBtn");
   const thinkingBtn = document.getElementById("thinkingBtn");
-  const modeBtn = document.getElementById("modeBtn");
+  const approvalBtn = document.getElementById("approvalBtn");
   const modelLabel = document.getElementById("modelLabel");
   const thinkingLabelEl = document.getElementById("thinkingLabel");
-  const modeLabel = document.getElementById("modeLabel");
+  const approvalLabelEl = document.getElementById("approvalLabel");
   const greetingTitle = document.getElementById("greetingTitle");
   const usageBtn = document.getElementById("usageBtn");
   const usageLabel = document.getElementById("usageLabel");
@@ -34,6 +34,7 @@
   const suggestEl = document.getElementById("suggest");
   const suggestHeaderEl = document.getElementById("suggestHeader");
   const thinkingPopover = document.getElementById("thinkingPopover");
+  const approvalPopover = document.getElementById("approvalPopover");
   const togglesPopover = document.getElementById("togglesPopover");
   const suggestListEl = document.getElementById("suggestList");
   const uiQuestionEl = document.getElementById("uiQuestion");
@@ -57,6 +58,7 @@
     thinkingLevel: "auto",
     reasoningSupported: true,
     advisorEnabled: false,
+    approvalMode: "yolo",
     mode: "Agent",
     displayName: "",
     contextUsage: null,
@@ -92,6 +94,9 @@
     { id: "model", label: "/model", detail: "Select model" },
     { id: "thinking", label: "/thinking", detail: "Set or pick reasoning thinking level" },
     { id: "advisor", label: "/advisor", detail: "Turn advisor on/off or check status (/advisor on|off|status)" },
+    { id: "approval", label: "/approval", detail: "Set approval mode (/approval yolo|write|ask)" },
+    { id: "compact", label: "/compact", detail: "Compact conversation context" },
+    { id: "shake", label: "/shake", detail: "Shake and free soft memory" },
     { id: "mode", label: "/mode", detail: "Select mode" },
     { id: "attach", label: "/attach", detail: "Attach files" },
     { id: "folder", label: "/folder", detail: "Attach a folder" },
@@ -212,6 +217,9 @@
 
   function renderCodeBlock(lang, code) {
     const clean = String(code || "").replace(/\n$/, "");
+    if (!clean.trim()) {
+      return "";
+    }
     const safe = escapeHtml(clean);
     return (
       '<div class="md-code">' +
@@ -1407,8 +1415,37 @@
       existing.remove();
     }
   }
+  function renderAdvisoryCard(noteText, advisorName, severity) {
+    const sev = String(severity || "concern").toLowerCase();
+    const adv = escapeHtml(advisorName || "Advisor");
+    const bodyHtml = renderMarkdownish(noteText || "");
+    return (
+      '<div class="advisory-card severity-' + escapeHtml(sev) + '">' +
+        '<div class="advisory-header">' +
+          '<span class="advisory-icon">👁</span>' +
+          '<span class="advisory-title">' + adv + '</span>' +
+          '<span class="advisory-badge ' + escapeHtml(sev) + '">' + escapeHtml(sev) + '</span>' +
+        '</div>' +
+        '<div class="advisory-body">' + bodyHtml + '</div>' +
+      '</div>'
+    );
+  }
 
   function renderMessage(msg) {
+    if (msg.role === "system") {
+      const rawText = (msg.parts || []).map(function (p) { return p.text || ""; }).join("");
+      if (rawText.indexOf("<advisory") >= 0) {
+        const advRegex = /<advisory(?:\s+advisor="([^"]*)")?(?:\s+severity="([^"]*)")?[^>]*>([\s\S]*?)<\/advisory>/gi;
+        let advMatch;
+        let advCards = "";
+        while ((advMatch = advRegex.exec(rawText)) !== null) {
+          advCards += renderAdvisoryCard(advMatch[3].trim(), advMatch[1] || "default", advMatch[2] || "concern");
+        }
+        if (advCards) {
+          return `<article class="msg system advisory" data-id="${msg.id}">${advCards}</article>`;
+        }
+      }
+    }
     const partsHtml = (msg.parts || [])
       .map(function (part, idx) {
         if (part.kind === "text") {
@@ -1454,6 +1491,7 @@
   }
 
   function renderAttachments() {
+    if (!attachmentsEl) return;
     const visible = (state.attachments || []).filter(function (a) {
       // Images render as inline chips inside the composer.
       return a && a.kind !== "image";
@@ -1543,10 +1581,10 @@
     if (modelBtn) modelBtn.title = "Model: " + (state.model || "Default");
     if (thinkingLabelEl) {
       if (state.reasoningSupported === false) {
-        thinkingLabelEl.textContent = "Thinking: off";
+        thinkingLabelEl.textContent = "off";
       } else {
         const lvl = state.thinkingLevel && state.thinkingLevel.trim() ? state.thinkingLevel.trim() : "auto";
-        thinkingLabelEl.textContent = "Thinking: " + lvl;
+        thinkingLabelEl.textContent = lvl;
       }
     }
     if (thinkingBtn) {
@@ -1555,10 +1593,17 @@
         thinkingBtn.title = "Model does not support reasoning";
       } else {
         thinkingBtn.classList.remove("disabled");
-        thinkingBtn.title = "Thinking level: " + (state.thinkingLevel || "auto");
+        thinkingBtn.title = "Reasoning level: " + (state.thinkingLevel || "auto");
       }
     }
-    if (modeLabel) modeLabel.textContent = state.mode || "Agent";
+    if (approvalLabelEl) {
+      const mode = (state.approvalMode || "yolo").toLowerCase();
+      approvalLabelEl.textContent = mode === "always-ask" ? "Ask" : (mode === "write" ? "Write" : "YOLO");
+    }
+    if (approvalBtn) {
+      const mode = (state.approvalMode || "yolo").toLowerCase();
+      approvalBtn.title = "Approval mode: " + (mode === "always-ask" ? "Ask" : (mode === "write" ? "Write" : "YOLO"));
+    }
     if (greetingTitle) {
       greetingTitle.textContent = state.displayName
         ? `How can I help you, ${state.displayName}?`
@@ -1663,14 +1708,9 @@
       // "error", or "stopped" the extension has not loaded omp yet, so every
       // interaction control stays disabled until the host signals readiness.
       const interactable = status.state === "ready" || busy;
-      stopBtn.hidden = notBusy();
-      sendBtn.disabled = !interactable;
-      sendBtn.hidden = false;
-      sendBtn.title = busy ? "Queue" : "Send";
-      sendBtn.setAttribute("aria-label", busy ? "Queue" : "Send");
-      sendBtn.classList.toggle("queue", busy);
+      updateSendButton();
       setComposerEnabled(interactable);
-      [newChatBtn, historyBtn, moreBtn, togglesBtn, attachBtn, attachFilesBtn, attachFolderBtn, modelBtn, thinkingBtn, modeBtn, usageBtn, queueToggleEl]
+      [newChatBtn, historyBtn, moreBtn, togglesBtn, attachBtn, attachFilesBtn, attachFolderBtn, modelBtn, thinkingBtn, approvalBtn, usageBtn, queueToggleEl]
         .filter(Boolean)
         .forEach(function (btn) { btn.disabled = !interactable; });
 
@@ -1941,6 +1981,28 @@
   function syncComposerEmptyState() {
     if (!inputEl) return;
     inputEl.classList.toggle("is-empty", isComposerEmpty());
+    updateSendButton();
+  }
+
+  function updateSendButton() {
+    if (!sendBtn) return;
+    const busy = state.status && state.status.state === "busy";
+    const hasText = getComposerText().trim().length > 0 || (state.attachments && state.attachments.length > 0);
+    const interactable = (state.status && state.status.state === "ready") || busy;
+    sendBtn.disabled = !interactable;
+    if (busy && !hasText) {
+      sendBtn.textContent = "■";
+      sendBtn.title = "Stop generating";
+      sendBtn.className = "primary stop";
+    } else if (busy && hasText) {
+      sendBtn.textContent = "+";
+      sendBtn.title = "Queue follow-up prompt";
+      sendBtn.className = "primary queue";
+    } else {
+      sendBtn.textContent = "↑";
+      sendBtn.title = "Send message";
+      sendBtn.className = "primary";
+    }
   }
 
   function setComposerEnabled(enabled) {
@@ -2727,6 +2789,9 @@
     if (thinkingPopover && !thinkingPopover.hidden && !thinkingPopover.contains(e.target) && thinkingBtn && !thinkingBtn.contains(e.target)) {
       thinkingPopover.hidden = true;
     }
+    if (approvalPopover && !approvalPopover.hidden && !approvalPopover.contains(e.target) && approvalBtn && !approvalBtn.contains(e.target)) {
+      approvalPopover.hidden = true;
+    }
     if (togglesPopover && !togglesPopover.hidden && !togglesPopover.contains(e.target) && togglesBtn && !togglesBtn.contains(e.target)) {
       togglesPopover.hidden = true;
     }
@@ -2735,6 +2800,7 @@
     if (e.key === "Escape") {
       if (queueMenuOpen) closeQueueMenu();
       if (thinkingPopover && !thinkingPopover.hidden) thinkingPopover.hidden = true;
+      if (approvalPopover && !approvalPopover.hidden) approvalPopover.hidden = true;
       if (togglesPopover && !togglesPopover.hidden) togglesPopover.hidden = true;
     }
   });
@@ -2744,8 +2810,17 @@
       stickToBottom = isNearBottom(messagesEl, 80);
     }, { passive: true });
   }
-  stopBtn.addEventListener("click", function () { vscode.postMessage({ type: "stop" }); });
-  if (newChatBtn) newChatBtn.addEventListener("click", function () { vscode.postMessage({ type: "newChat" }); });
+  if (sendBtn) {
+    sendBtn.addEventListener("click", function () {
+      const busy = state.status && state.status.state === "busy";
+      const hasText = getComposerText().trim().length > 0 || (state.attachments && state.attachments.length > 0);
+      if (busy && !hasText) {
+        vscode.postMessage({ type: "stop" });
+        return;
+      }
+      send();
+    });
+  }
   if (historyBtn) historyBtn.addEventListener("click", function () { vscode.postMessage({ type: "history" }); });
   if (moreBtn) moreBtn.addEventListener("click", function () { vscode.postMessage({ type: "moreMenu" }); });
   if (togglesBtn) {
@@ -2764,11 +2839,17 @@
       toggleThinkingPopover();
     });
   }
+  if (approvalBtn) {
+    approvalBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      toggleApprovalPopover();
+    });
+  }
   if (usageBtn) usageBtn.addEventListener("click", function () { vscode.postMessage({ type: "showUsage" }); });
-  modeBtn.addEventListener("click", function () { vscode.postMessage({ type: "pickMode" }); });
 
   function closeAllPopovers() {
     if (thinkingPopover) thinkingPopover.hidden = true;
+    if (approvalPopover) approvalPopover.hidden = true;
     if (togglesPopover) togglesPopover.hidden = true;
   }
 
@@ -2800,6 +2881,49 @@
     }
   }
 
+  function renderApprovalPopover() {
+    if (!approvalPopover) return;
+    const current = (state.approvalMode || "yolo").toLowerCase();
+    const modes = [
+      { id: "yolo", label: "YOLO", desc: "Autonomous" },
+      { id: "write", label: "Write", desc: "Prompt on edits" },
+      { id: "always-ask", label: "Ask", desc: "Prompt all" },
+    ];
+    let html = '<div class="dropdown-header">Approval Mode</div>';
+    modes.forEach(function (m) {
+      const isSel = m.id === current;
+      html += '<button type="button" class="dropdown-item' + (isSel ? ' active' : '') + '" data-approval="' + m.id + '">';
+      html += '<div class="dropdown-item-left">';
+      html += '<span class="dropdown-check">' + (isSel ? '✓' : '') + '</span>';
+      html += '<span class="dropdown-item-label">' + m.label + '</span>';
+      html += '</div>';
+      html += '<span class="dropdown-detail" style="font-size:10.5px; color:var(--muted);">' + m.desc + '</span>';
+      html += '</button>';
+    });
+    approvalPopover.innerHTML = html;
+  }
+
+  function toggleApprovalPopover() {
+    if (!approvalPopover) return;
+    const willOpen = approvalPopover.hidden;
+    closeAllPopovers();
+    if (willOpen) {
+      renderApprovalPopover();
+      approvalPopover.hidden = false;
+    }
+  }
+
+  if (approvalPopover) {
+    approvalPopover.addEventListener("click", function (e) {
+      const btn = e.target.closest("[data-approval]");
+      if (!btn) return;
+      const mode = btn.getAttribute("data-approval") || "yolo";
+      state.approvalMode = mode;
+      closeAllPopovers();
+      updateChrome();
+      vscode.postMessage({ type: "setApprovalMode", mode: mode });
+    });
+  }
   function renderTogglesPopover() {
     if (!togglesPopover) return;
     const advOn = Boolean(state.advisorEnabled);
@@ -2878,7 +3002,7 @@
       if (!lvl) return;
       state.thinkingLevel = lvl;
       if (thinkingLabelEl) {
-        thinkingLabelEl.textContent = "Thinking: " + lvl;
+        thinkingLabelEl.textContent = lvl;
       }
       closeAllPopovers();
       vscode.postMessage({ type: "setThinkingLevel", level: lvl === "auto" ? "" : lvl });
@@ -3171,13 +3295,15 @@
     return true;
   }
 
-  attachmentsEl.addEventListener("click", function (e) {
-    if (handleImagePreviewClick(e)) return;
-    const btn = e.target.closest("button[data-action='remove-att']");
-    if (btn == null) return;
-    const id = btn.parentElement && btn.parentElement.getAttribute("data-id");
-    if (id) vscode.postMessage({ type: "removeAttachment", id: id });
-  });
+  if (attachmentsEl) {
+    attachmentsEl.addEventListener("click", function (e) {
+      if (handleImagePreviewClick(e)) return;
+      const btn = e.target.closest("button[data-action='remove-att']");
+      if (btn == null) return;
+      const id = btn.parentElement && btn.parentElement.getAttribute("data-id");
+      if (id) vscode.postMessage({ type: "removeAttachment", id: id });
+    });
+  }
 
   if (imagePreviewEl) {
     imagePreviewEl.addEventListener("click", function (e) {
@@ -3365,9 +3491,8 @@
         thinkingLevel: msg.thinkingLevel != null ? msg.thinkingLevel : state.thinkingLevel,
         reasoningSupported: msg.reasoningSupported !== false,
         advisorEnabled: Boolean(msg.advisorEnabled),
+        approvalMode: msg.approvalMode || state.approvalMode || "yolo",
         mode: msg.mode || state.mode,
-        displayName: msg.displayName || state.displayName,
-        contextUsage: msg.contextUsage != null ? msg.contextUsage : state.contextUsage,
         tabs: msg.tabs || [],
         activeTabId: nextTabId,
         uiQuestion: msg.uiQuestion !== undefined ? msg.uiQuestion : null,
@@ -3424,8 +3549,8 @@
       if (msg.thinkingLevel != null) state.thinkingLevel = msg.thinkingLevel;
       if (msg.reasoningSupported != null) state.reasoningSupported = msg.reasoningSupported !== false;
       if (msg.advisorEnabled != null) state.advisorEnabled = Boolean(msg.advisorEnabled);
+      if (msg.approvalMode != null) state.approvalMode = msg.approvalMode;
       if (msg.mode != null) state.mode = msg.mode;
-      if (msg.contextUsage !== undefined) state.contextUsage = msg.contextUsage;
       if (msg.tabs) state.tabs = msg.tabs;
       if (msg.activeTabId) state.activeTabId = msg.activeTabId;
       if (msg.uiQuestion !== undefined) state.uiQuestion = msg.uiQuestion;

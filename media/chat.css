@@ -84,8 +84,12 @@ button {
   line-height: 1.55; white-space: normal; word-break: break-word;
 }
 .msg.user .bubble {
-  background: var(--chip); border: 1px solid var(--border);
-  border-radius: 12px; padding: 10px 12px; width: 100%; max-width: 100%; min-width: 0;
+  background: color-mix(in srgb, var(--panel) 75%, var(--link) 8%);
+  border: 1px solid color-mix(in srgb, var(--link) 25%, var(--border));
+  border-left: 3px solid var(--link);
+  border-radius: 12px; padding: 10px 14px; width: 100%; max-width: 100%; min-width: 0;
+  color: var(--text);
+  box-shadow: 0 1px 4px color-mix(in srgb, #000 15%, transparent);
 }
 .msg.system .bubble {
   background: color-mix(in srgb, var(--text) 4%, transparent);
@@ -101,6 +105,78 @@ button {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
   color: #ffc9bf;
+}
+/* ---- advisor advisory cards ---- */
+.advisory-card {
+  margin: 4px 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  font-size: 12px;
+}
+.advisory-card.severity-blocker {
+  border-left: 3px solid var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+  background: color-mix(in srgb, var(--danger) 8%, var(--panel));
+}
+.advisory-card.severity-concern {
+  border-left: 3px solid #e5a93b;
+  border-color: color-mix(in srgb, #e5a93b 35%, var(--border));
+  background: color-mix(in srgb, #e5a93b 8%, var(--panel));
+}
+.advisory-card.severity-nit,
+.advisory-card.severity-info {
+  border-left: 3px solid var(--muted);
+}
+.advisory-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+.advisory-icon {
+  font-size: 13px;
+}
+.advisory-title {
+  font-weight: 600;
+  color: var(--text);
+}
+.advisory-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: auto;
+}
+.advisory-badge.blocker {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+  color: var(--danger);
+}
+.advisory-badge.concern {
+  background: color-mix(in srgb, #e5a93b 25%, transparent);
+  color: #e5a93b;
+}
+.advisory-badge.nit,
+.advisory-badge.info {
+  background: color-mix(in srgb, var(--muted) 20%, transparent);
+  color: var(--muted);
+}
+.advisory-body {
+  line-height: 1.45;
+  color: var(--text);
+  word-break: break-word;
+}
+.advisory-body p {
+  margin: 4px 0;
+}
+.advisory-body p:first-child {
+  margin-top: 0;
+}
+.advisory-body p:last-child {
+  margin-bottom: 0;
 }
 
 /* ---- empty / greeting ---- */
@@ -819,14 +895,21 @@ button {
 
 
 .composer-actions {
-  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  display: flex; justify-content: space-between; align-items: center; gap: 6px;
 }
-.left-actions, .right-actions { display: flex; align-items: center; gap: 4px; }
+.left-actions {
+  display: flex; align-items: center; gap: 4px;
+  min-width: 0; flex: 1 1 auto; flex-wrap: wrap; row-gap: 4px;
+}
+.right-actions {
+  display: flex; align-items: center; gap: 4px;
+  flex-shrink: 0; margin-left: auto;
+}
 
 .pill {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 8px; border-radius: 8px; color: var(--muted);
-  font-size: 12px; max-width: 150px;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 3px 6px; border-radius: 7px; color: var(--muted);
+  font-size: 11.5px; flex: 0 1 auto; min-width: 0; max-width: 120px;
 }
 .pill:hover { background: var(--hover); color: var(--text); }
 .pill.disabled {
@@ -838,10 +921,9 @@ button {
   color: var(--muted);
 }
 .pill .pill-label {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px;
 }
 .pill .chev { font-size: 9px; opacity: 0.8; }
-
 .ghost { display: none; }
 
 .icon-btn.composer-icon {
@@ -856,6 +938,14 @@ button {
   background: var(--send); color: var(--send-fg);
 }
 .primary:hover { filter: brightness(0.96); }
+.primary.stop {
+  background: color-mix(in srgb, var(--danger) 85%, transparent);
+  color: #fff;
+}
+.primary.queue {
+  background: color-mix(in srgb, var(--link) 85%, transparent);
+  color: #fff;
+}
 .primary:disabled { opacity: 0.35; cursor: not-allowed; }
 .secondary {
   background: transparent; border: 1px solid var(--border); color: var(--muted);
@@ -1274,6 +1364,10 @@ button {
   width: 200px;
   max-height: 240px;
   overflow-y: auto;
+}
+.approval-popover {
+  left: 8px;
+  width: 220px;
 }
 .toggles-popover {
   right: 8px;

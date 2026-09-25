@@ -427,3 +427,53 @@ test("Scenario 5: Live thinking toggle forces remount and cleanly removes thinki
   assert.ok(innerHtmlContent.includes("Answer start"), "Text answer must remain visible");
   assert.ok(innerHtmlContent.includes('data-vis-sig="false:true:true"'), "Updated article must carry new visibility signature");
 });
+
+test("Scenario 6: Ready rendering survives a missing attachment container", () => {
+  const code = fs.readFileSync("media/chat.js", "utf8");
+  const element = () => ({
+    tagName: "DIV",
+    addEventListener: () => {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: {},
+    setAttribute: () => {},
+    getAttribute: () => null,
+    hidden: false,
+    children: [],
+    childNodes: [],
+    innerHTML: "",
+    textContent: "",
+    contains: () => false,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  });
+  const messagesEl = element();
+  let messageHandler = null;
+
+  globalThis.Node = { TEXT_NODE: 3, ELEMENT_NODE: 1 };
+  globalThis.document = {
+    getElementById: (id) => {
+      if (id === "attachments") return null;
+      if (id === "messages") return messagesEl;
+      return element();
+    },
+    addEventListener: (event, handler) => {
+      if (event === "message") messageHandler = handler;
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  };
+  globalThis.window = globalThis.document;
+  globalThis.acquireVsCodeApi = () => ({ postMessage: () => {} });
+
+  new Function(code)();
+  assert.doesNotThrow(() => {
+    messageHandler({
+      data: {
+        type: "ready",
+        status: { state: "ready" },
+        messages: [],
+        attachments: [],
+      },
+    });
+  });
+});

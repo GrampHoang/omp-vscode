@@ -138,6 +138,7 @@ export type HostToWebview =
       thinkingLevel?: string;
       reasoningSupported?: boolean;
       advisorEnabled?: boolean;
+      approvalMode?: string;
       mode?: string;
       displayName?: string;
       contextUsage?: ContextUsage | null;
@@ -158,6 +159,7 @@ export type HostToWebview =
       thinkingLevel?: string;
       reasoningSupported?: boolean;
       advisorEnabled?: boolean;
+      approvalMode?: string;
       mode?: string;
       displayName?: string;
       contextUsage?: ContextUsage | null;
@@ -188,6 +190,7 @@ export type WebviewToHost =
   | { type: "pickThinkingLevel" }
   | { type: "setThinkingLevel"; level: string }
   | { type: "toggleAdvisor" }
+  | { type: "setApprovalMode"; mode: string }
   | { type: "pickMode" }
   | { type: "showUsage" }
   | { type: "showTogglesMenu" }

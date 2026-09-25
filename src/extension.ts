@@ -12,8 +12,8 @@ function workspaceCwd(): string {
   return folder?.uri.fsPath ?? process.cwd();
 }
 
-const OPEN_SESSIONS_KEY = "ompChat.openSessions";
-const LEGACY_LAST_SESSION_KEY = "ompChat.lastSessionId";
+const OPEN_SESSIONS_KEY = "ompChatExtend.openSessions";
+const LEGACY_LAST_SESSION_KEY = "ompChatExtend.lastSessionId";
 
 function readOpenSessions(context: vscode.ExtensionContext): OpenSessionsState | undefined {
   const saved = context.workspaceState.get<OpenSessionsState>(OPEN_SESSIONS_KEY);
@@ -70,78 +70,78 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.open", async () => {
-      await vscode.commands.executeCommand("ompChat.sidebar.focus");
+    vscode.commands.registerCommand("ompChatExtend.open", async () => {
+      await vscode.commands.executeCommand("ompChatExtend.sidebar.focus");
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.showToolLog", () => {
+    vscode.commands.registerCommand("ompChatExtend.showToolLog", () => {
       showToolFileLog();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.showErrorLog", () => {
+    vscode.commands.registerCommand("ompChatExtend.showErrorLog", () => {
       showErrorLog();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.newChat", async () => {
+    vscode.commands.registerCommand("ompChatExtend.newChat", async () => {
       await provider.newChat();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.stop", () => {
+    vscode.commands.registerCommand("ompChatExtend.stop", () => {
       provider.stop();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.restartSession", async () => {
+    vscode.commands.registerCommand("ompChatExtend.restartSession", async () => {
       await provider.restart();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.attachFiles", async () => {
+    vscode.commands.registerCommand("ompChatExtend.attachFiles", async () => {
       await provider.attachFiles();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.attachFolder", async () => {
+    vscode.commands.registerCommand("ompChatExtend.attachFolder", async () => {
       await provider.attachFolder();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.attachMenu", async () => {
+    vscode.commands.registerCommand("ompChatExtend.attachMenu", async () => {
       await provider.showAttachMenu();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.toggleCollapseAll", () => {
+    vscode.commands.registerCommand("ompChatExtend.toggleCollapseAll", () => {
       provider.toggleCollapseAll();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.toggleThinkingVisibility", async () => {
+    vscode.commands.registerCommand("ompChatExtend.toggleThinkingVisibility", async () => {
       await provider.toggleThinkingVisibility();
     }),
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.toggleTerminalVisibility", async () => {
+    vscode.commands.registerCommand("ompChatExtend.toggleTerminalVisibility", async () => {
       await provider.toggleTerminalVisibility();
     }),
   );
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "ompChat.attachExplorer",
+      "ompChatExtend.attachExplorer",
       async (uri?: vscode.Uri, uris?: vscode.Uri[]) => {
         const selected = uris?.length ? uris : uri ? [uri] : [];
         if (!selected.length) {
@@ -154,13 +154,13 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.attachTerminal", async () => {
+    vscode.commands.registerCommand("ompChatExtend.attachTerminal", async () => {
       await provider.attachTerminal();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.sendSelection", async () => {
+    vscode.commands.registerCommand("ompChatExtend.sendSelection", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor || editor.selection.isEmpty) {
         vscode.window.showInformationMessage("Select some code first.");
@@ -176,13 +176,13 @@ export function activate(context: vscode.ExtensionContext): void {
         language,
         content: selection,
       });
-      await vscode.commands.executeCommand("ompChat.sidebar.focus");
+      await vscode.commands.executeCommand("ompChatExtend.sidebar.focus");
       provider.revealAttachments();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ompChat.attachCurrentFile", async () => {
+    vscode.commands.registerCommand("ompChatExtend.attachCurrentFile", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
         vscode.window.showInformationMessage("Open a file first.");
@@ -207,7 +207,7 @@ export function activate(context: vscode.ExtensionContext): void {
           content: editor.document.getText(),
         });
       }
-      await vscode.commands.executeCommand("ompChat.sidebar.focus");
+      await vscode.commands.executeCommand("ompChatExtend.sidebar.focus");
       provider.revealAttachments();
     }),
   );
@@ -226,11 +226,11 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   // Preload the model list once at startup so the picker opens instantly;
-  // `ompChat.newChat`/session-ready refresh keeps it fresh. Reload if the
+  // `ompChatExtend.newChat`/session-ready refresh keeps it fresh. Reload if the
   // omp binary path changes, since the cache is keyed on it.
   const preloadModels = () => {
     const ompPath =
-      vscode.workspace.getConfiguration("ompChat").get<string>("ompPath", "omp") || "omp";
+      vscode.workspace.getConfiguration("ompChatExtend").get<string>("ompPath", "omp") || "omp";
     void preloadOmpModels(ompPath).catch(() => {
       // Non-fatal: the picker falls back to a fresh fetch on miss.
     });
@@ -238,7 +238,7 @@ export function activate(context: vscode.ExtensionContext): void {
   preloadModels();
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("ompChat.ompPath")) {
+      if (e.affectsConfiguration("ompChatExtend.ompPath")) {
         invalidateOmpModelCache();
         preloadModels();
       }

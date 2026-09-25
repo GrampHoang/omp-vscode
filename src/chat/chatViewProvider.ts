@@ -9,13 +9,17 @@ import { showToolFileLog } from "../omp/toolFileLog";
 import type { FileSuggestItem, HostToWebview, WebviewToHost } from "../omp/types";
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = "ompChat.sidebar";
+  public static readonly viewType = "ompChatExtend.sidebar";
 
   private view?: vscode.WebviewView;
   private readonly disposables: vscode.Disposable[] = [];
   private mode: string = "Agent";
   private displayName: string = "";
   private readonly attachments: AttachmentService;
+  private showThinking = true;
+  private showTerminal = true;
+  private showTools = true;
+  private approvalMode = "yolo";
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -25,8 +29,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.attachments = new AttachmentService(sessions, storageUri);
     this.displayName = this.resolveDisplayName();
     this.mode =
-      vscode.workspace.getConfiguration("ompChat").get<string>("mode", "Agent") || "Agent";
-
+      vscode.workspace.getConfiguration("ompChatExtend").get<string>("mode", "Agent") || "Agent";
+    this.showThinking =
+      vscode.workspace.getConfiguration("ompChatExtend").get<boolean>("showThinking", true);
+    this.showTerminal =
+      vscode.workspace.getConfiguration("ompChatExtend").get<boolean>("showTerminal", true);
+    this.showTools =
+      vscode.workspace.getConfiguration("ompChatExtend").get<boolean>("showTools", true);
+    this.approvalMode =
+      vscode.workspace.getConfiguration("ompChatExtend").get<string>("approvalMode", "yolo") || "yolo";
     this.disposables.push(
       sessions.onDidChange(() => {
         this.postState();
@@ -35,31 +46,31 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
-        if (e.affectsConfiguration("ompChat.autoTitle")) {
+        if (e.affectsConfiguration("ompChatExtend.autoTitle")) {
           void this.onAutoTitleSettingChanged();
         }
         if (
-          e.affectsConfiguration("ompChat.showThinking") ||
-          e.affectsConfiguration("ompChat.showTerminal") ||
-          e.affectsConfiguration("ompChat.showTools") ||
-          e.affectsConfiguration("ompChat.thinking") ||
-          e.affectsConfiguration("ompChat.model") ||
-          e.affectsConfiguration("ompChat.mode")
+          e.affectsConfiguration("ompChatExtend.showThinking") ||
+          e.affectsConfiguration("ompChatExtend.showTerminal") ||
+          e.affectsConfiguration("ompChatExtend.showTools") ||
+          e.affectsConfiguration("ompChatExtend.thinking") ||
+          e.affectsConfiguration("ompChatExtend.model") ||
+          e.affectsConfiguration("ompChatExtend.mode")
         ) {
-          if (e.affectsConfiguration("ompChat.mode")) {
+          if (e.affectsConfiguration("ompChatExtend.mode")) {
             this.mode =
-              vscode.workspace.getConfiguration("ompChat").get<string>("mode", "Agent") || "Agent";
+              vscode.workspace.getConfiguration("ompChatExtend").get<string>("mode", "Agent") || "Agent";
           }
           this.post({
             type: "config",
             showThinking: vscode.workspace
-              .getConfiguration("ompChat")
+              .getConfiguration("ompChatExtend")
               .get<boolean>("showThinking", true),
             showTerminal: vscode.workspace
-              .getConfiguration("ompChat")
+              .getConfiguration("ompChatExtend")
               .get<boolean>("showTerminal", true),
             showTools: vscode.workspace
-              .getConfiguration("ompChat")
+              .getConfiguration("ompChatExtend")
               .get<boolean>("showTools", true),
             model: this.currentModelLabel(),
             thinkingLevel: this.sessions.getThinkingLevel(),
@@ -121,25 +132,25 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   async attachFiles(): Promise<void> {
     await this.attachments.attachFiles();
-    await vscode.commands.executeCommand("ompChat.sidebar.focus");
+    await vscode.commands.executeCommand("ompChatExtend.sidebar.focus");
     this.postState();
   }
 
   async attachFolder(): Promise<void> {
     await this.attachments.attachFolder();
-    await vscode.commands.executeCommand("ompChat.sidebar.focus");
+    await vscode.commands.executeCommand("ompChatExtend.sidebar.focus");
     this.postState();
   }
 
   async attachPaths(paths: string[]): Promise<void> {
     await this.attachments.attachPaths(paths);
-    await vscode.commands.executeCommand("ompChat.sidebar.focus");
+    await vscode.commands.executeCommand("ompChatExtend.sidebar.focus");
     this.postState();
   }
 
   async showAttachMenu(): Promise<void> {
     await this.attachments.showAttachMenu();
-    await vscode.commands.executeCommand("ompChat.sidebar.focus");
+    await vscode.commands.executeCommand("ompChatExtend.sidebar.focus");
     this.postState();
   }
 
@@ -148,7 +159,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     if (!attached) {
       return;
     }
-    await vscode.commands.executeCommand("ompChat.sidebar.focus");
+    await vscode.commands.executeCommand("ompChatExtend.sidebar.focus");
     this.postState();
   }
 
@@ -210,24 +221,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         await this.pickThinkingLevelAndApply();
         break;
       case "setThinkingLevel":
-        await this.sessions.setThinkingLevel(msg.level);
-        await vscode.workspace
-          .getConfiguration("ompChat")
-          .update("thinking", msg.level, vscode.ConfigurationTarget.Workspace);
-        this.post({
-          type: "config",
-          thinkingLevel: msg.level || "auto",
-          reasoningSupported: this.sessions.isReasoningSupported(),
-          model: this.currentModelLabel(),
-          mode: this.mode,
-          displayName: this.displayName,
-        });
+        await this.sessions.setThinkingLevel(msg.level || "");
+        this.postState();
         break;
-      case "toggleAdvisor":
-        await this.sessions.toggleAdvisor();
-        break;
-      case "pickMode":
-        await this.pickModeAndApply();
+      case "setApprovalMode":
+        this.approvalMode = msg.mode || "yolo";
+        await this.sessions.restart({ approvalMode: this.approvalMode });
+        this.postState();
         break;
       case "showUsage": {
         const usage = this.sessions.getContextUsage();
@@ -432,7 +432,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   private resolveDisplayName(): string {
-    const fromConfig = vscode.workspace.getConfiguration("ompChat").get<string>("displayName", "");
+    const fromConfig = vscode.workspace.getConfiguration("ompChatExtend").get<string>("displayName", "");
     if (fromConfig && fromConfig.trim()) {
       return fromConfig.trim();
     }
@@ -445,26 +445,19 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   private postState(): void {
-    const showThinking = vscode.workspace
-      .getConfiguration("ompChat")
-      .get<boolean>("showThinking", true);
-    const showTerminal = vscode.workspace
-      .getConfiguration("ompChat")
-      .get<boolean>("showTerminal", true);
     this.post({
       type: "ready",
       status: this.sessions.getStatus(),
       messages: this.sessions.getMessages(),
       attachments: this.sessions.getAttachments(),
-      showThinking,
-      showTerminal,
-      showTools: vscode.workspace
-        .getConfiguration("ompChat")
-        .get<boolean>("showTools", true),
+      showThinking: this.showThinking,
+      showTerminal: this.showTerminal,
+      showTools: this.showTools,
       model: this.currentModelLabel(),
       thinkingLevel: this.sessions.getThinkingLevel(),
       reasoningSupported: this.sessions.isReasoningSupported(),
       advisorEnabled: this.sessions.isAdvisorEnabled(),
+      approvalMode: this.approvalMode,
       mode: this.mode,
       displayName: this.displayName,
       contextUsage: this.sessions.getContextUsage(),
@@ -594,6 +587,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           <div id="suggestList" class="suggest-list" role="listbox"></div>
         </div>
         <div id="thinkingPopover" class="dropdown-popover thinking-popover" hidden></div>
+        <div id="approvalPopover" class="dropdown-popover approval-popover" hidden></div>
         <div id="togglesPopover" class="dropdown-popover toggles-popover" hidden></div>
         <div id="attachments" class="attachments"></div>
         <div id="input" class="composer-input" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Plan, @ for context, / for commands — Enter queues while generating"></div>
@@ -607,8 +601,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
               <span id="thinkingLabel" class="pill-label">Thinking</span>
               <span class="chev">▾</span>
             </button>
-            <button id="modeBtn" class="pill" title="Mode">
-              <span id="modeLabel" class="pill-label">Agent</span>
+            <button id="approvalBtn" class="pill" title="Approval mode (YOLO, Write, Ask)">
+              <span id="approvalLabel" class="pill-label">YOLO</span>
               <span class="chev">▾</span>
             </button>
             <button id="usageBtn" class="usage-chip" title="Context usage this session" type="button">
@@ -645,21 +639,30 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async pickModelAndApply(): Promise<void> {
-    const cfg = vscode.workspace.getConfiguration("ompChat");
+    const cfg = vscode.workspace.getConfiguration("ompChatExtend");
     const ompPath = cfg.get<string>("ompPath", "omp") || "omp";
-    const current = cfg.get<string>("model", "") || "";
+    const current = this.currentModelLabel();
     const selected = await pickModel(ompPath, current);
     if (selected === undefined) {
       return;
     }
-    await cfg.update("model", selected, vscode.ConfigurationTarget.Workspace);
-    this.post({
-      type: "config",
-      model: selected.trim() ? selected : "Default",
-      mode: this.mode,
-      displayName: this.displayName,
-    });
-    await this.sessions.restart();
+    if (!selected.trim()) {
+      await this.sessions.restart({ model: undefined });
+    } else {
+      let provider = "";
+      let modelId = selected.trim();
+      const slash = modelId.indexOf("/");
+      if (slash > 0) {
+        provider = modelId.slice(0, slash);
+        modelId = modelId.slice(slash + 1);
+      }
+      try {
+        await this.sessions.setModel(provider, modelId);
+      } catch (err) {
+        logWarn("Live setModel failed; restarting session with chosen model", err);
+        await this.sessions.restart({ model: selected.trim() });
+      }
+    }
     this.postState();
   }
   private async pickThinkingLevelAndApply(): Promise<void> {
@@ -667,8 +670,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       vscode.window.showInformationMessage("The active model does not support thinking / reasoning.");
       return;
     }
-    const cfg = vscode.workspace.getConfiguration("ompChat");
-    const current = this.sessions.getThinkingLevel() || cfg.get<string>("thinking", "") || "auto";
+    const current = this.sessions.getThinkingLevel() || "auto";
     const levels: { label: string; detail?: string; value: string }[] = [
       { label: "off", detail: "Disable thinking / reasoning", value: "off" },
       { label: "minimal", detail: "Minimal thinking tokens", value: "minimal" },
@@ -695,15 +697,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     const chosen = levels.find((l) => l.label === rawLabel);
     if (chosen !== undefined) {
       await this.sessions.setThinkingLevel(chosen.value);
-      await cfg.update("thinking", chosen.value, vscode.ConfigurationTarget.Workspace);
-      this.post({
-        type: "config",
-        thinkingLevel: chosen.value || "auto",
-        reasoningSupported: this.sessions.isReasoningSupported(),
-        model: this.currentModelLabel(),
-        mode: this.mode,
-        displayName: this.displayName,
-      });
+      this.postState();
     }
   }
   toggleCollapseAll(expand?: boolean): void {
@@ -711,29 +705,20 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   async toggleThinkingVisibility(): Promise<void> {
-    const cfg = vscode.workspace.getConfiguration("ompChat");
-    const current = cfg.get<boolean>("showThinking", true);
-    await cfg.update("showThinking", !current, vscode.ConfigurationTarget.Global);
-    this.post({ type: "config", showThinking: !current });
+    this.showThinking = !this.showThinking;
+    this.postState();
   }
 
   async toggleTerminalVisibility(): Promise<void> {
-    const cfg = vscode.workspace.getConfiguration("ompChat");
-    const current = cfg.get<boolean>("showTerminal", true);
-    await cfg.update("showTerminal", !current, vscode.ConfigurationTarget.Global);
-    this.post({ type: "config", showTerminal: !current });
+    this.showTerminal = !this.showTerminal;
+    this.postState();
   }
 
   async toggleToolsVisibility(): Promise<void> {
-    const cfg = vscode.workspace.getConfiguration("ompChat");
-    const current = cfg.get<boolean>("showTools", true);
-    await cfg.update("showTools", !current, vscode.ConfigurationTarget.Global);
-    this.post({ type: "config", showTools: !current });
+    this.showTools = !this.showTools;
+    this.postState();
   }
   private async showTogglesMenu(): Promise<void> {
-    const cfg = vscode.workspace.getConfiguration("ompChat");
-    const showThinking = cfg.get<boolean>("showThinking", true);
-    const showTerminal = cfg.get<boolean>("showTerminal", true);
     const isAdvOn = this.sessions.isAdvisorEnabled();
 
     const items: (vscode.QuickPickItem & { action: string })[] = [
@@ -743,13 +728,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         action: "advisor",
       },
       {
-        label: `${showThinking ? "$(check) " : "$(circle-outline) "}Thinking Blocks`,
-        description: showThinking ? "Visible in chat — click to hide" : "Hidden in chat — click to show",
+        label: `${this.showThinking ? "$(check) " : "$(circle-outline) "}Thinking Blocks`,
+        description: this.showThinking ? "Visible in chat — click to hide" : "Hidden in chat — click to show",
         action: "thinkingVisibility",
       },
       {
-        label: `${showTerminal ? "$(check) " : "$(circle-outline) "}Terminal / Tool Runs`,
-        description: showTerminal ? "Visible in chat — click to hide" : "Hidden in chat — click to show",
+        label: `${this.showTerminal ? "$(check) " : "$(circle-outline) "}Terminal / Tool Runs`,
+        description: this.showTerminal ? "Visible in chat — click to hide" : "Hidden in chat — click to show",
         action: "terminalVisibility",
       },
       {
@@ -769,11 +754,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         await this.sessions.toggleAdvisor();
         break;
       case "thinkingVisibility":
-        await cfg.update("showThinking", !showThinking, vscode.ConfigurationTarget.Global);
-        this.post({
-          type: "config",
-          showThinking: !showThinking,
-        });
+        await this.toggleThinkingVisibility();
         break;
       case "terminalVisibility":
         await this.toggleTerminalVisibility();
@@ -790,15 +771,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.mode = selected;
-    await vscode.workspace
-      .getConfiguration("ompChat")
-      .update("mode", selected, vscode.ConfigurationTarget.Workspace);
-    this.post({
-      type: "config",
-      mode: selected,
-      model: this.currentModelLabel(),
-      displayName: this.displayName,
-    });
+    this.postState();
   }
 
   private async showTabPicker(): Promise<void> {
@@ -946,7 +919,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async onAutoTitleSettingChanged(): Promise<void> {
-    const enabled = vscode.workspace.getConfiguration("ompChat").get<boolean>("autoTitle", true);
+    const enabled = vscode.workspace.getConfiguration("ompChatExtend").get<boolean>("autoTitle", true);
     const choice = await vscode.window.showInformationMessage(
       enabled
         ? "Auto-title is on. Restart open chats so new sessions load the title extension?"
@@ -1061,9 +1034,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     } else if (picked.label === "Restart session") {
       await this.restart();
     } else if (picked.label === "Attach current file") {
-      await vscode.commands.executeCommand("ompChat.attachCurrentFile");
+      await vscode.commands.executeCommand("ompChatExtend.attachCurrentFile");
     } else if (picked.label === "Attach selection") {
-      await vscode.commands.executeCommand("ompChat.sendSelection");
+      await vscode.commands.executeCommand("ompChatExtend.sendSelection");
     } else if (picked.label === "Attach terminal output") {
       await this.attachTerminal();
     }
@@ -1234,6 +1207,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       model: true,
       thinking: true,
       advisor: true,
+      compact: true,
+      shake: true,
+      approval: true,
+      yolo: true,
+      cost: true,
       mode: true,
       attach: true,
       files: true,
@@ -1268,9 +1246,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "thinking":
         if (argText) {
           await this.sessions.setThinkingLevel(argText);
-          await vscode.workspace
-            .getConfiguration("ompChat")
-            .update("thinking", argText, vscode.ConfigurationTarget.Workspace);
+          this.postState();
         } else {
           await this.pickThinkingLevelAndApply();
         }
@@ -1296,6 +1272,20 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
         break;
       }
+      case "compact":
+      case "shake":
+      case "cost":
+        await this.sessions.send(`/${id}`);
+        void this.sessions.refreshSessionState();
+        break;
+      case "approval":
+      case "yolo":
+        if (argText) {
+          this.approvalMode = argText.toLowerCase();
+          await this.sessions.restart({ approvalMode: this.approvalMode });
+          this.postState();
+        }
+        break;
       case "mode":
         await this.pickModeAndApply();
         break;

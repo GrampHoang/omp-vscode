@@ -6,6 +6,7 @@ import type {
   Attachment,
   ChatMessage,
   ContextUsage,
+  OmpClientOptions,
   SessionModelInfo,
   SessionStatus,
   UiQuestion,
@@ -64,7 +65,7 @@ export class TabManager {
     private readonly openSessionsStore?: OpenSessionsStore,
   ) {
     const continueEnabled = vscode.workspace
-      .getConfiguration("ompChat")
+      .getConfiguration("ompChatExtend")
       .get<boolean>("continueLastSession", true);
     const saved = continueEnabled ? this.openSessionsStore?.get() : undefined;
     const sessionIds = saved?.sessionIds?.filter((id) => Boolean(id?.trim())) ?? [];
@@ -316,8 +317,8 @@ export class TabManager {
       .catch(() => undefined);
   }
 
-  async restart(): Promise<void> {
-    await this.active().restart();
+  async restart(overrides?: Partial<OmpClientOptions>): Promise<void> {
+    await this.active().restart(overrides);
   }
 
   async ensureStarted(): Promise<void> {
@@ -438,6 +439,10 @@ export class TabManager {
     return this.active().getModelLabel();
   }
 
+  async setModel(provider: string, modelId: string): Promise<void> {
+    await this.active().setModel(provider, modelId);
+  }
+
   getThinkingLevel(): string | undefined {
     return this.active().getThinkingLevel();
   }
@@ -448,6 +453,14 @@ export class TabManager {
 
   async setThinkingLevel(level: string): Promise<void> {
     await this.active().setThinkingLevel(level);
+  }
+
+  async cycleThinkingLevel(): Promise<string | null> {
+    return this.active().cycleThinkingLevel();
+  }
+
+  async getAvailableModels(): Promise<unknown[]> {
+    return this.active().getAvailableModels();
   }
 
   isAdvisorEnabled(): boolean {

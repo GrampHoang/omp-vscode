@@ -306,6 +306,23 @@ export class OmpRpcClient extends EventEmitter {
   ): void {
     this.send({ type: "extension_ui_response", id, ...response });
   }
+  async setModel(provider: string, modelId: string): Promise<Record<string, unknown>> {
+    const res = await this.request({ type: "set_model", provider, modelId });
+    if (res.success === false) {
+      throw new Error(String(res.error ?? "set_model failed"));
+    }
+    return (res.data as Record<string, unknown>) ?? {};
+  }
+
+  async getAvailableModels(): Promise<unknown[]> {
+    const res = await this.request({ type: "get_available_models" });
+    if (res.success === false) {
+      throw new Error(String(res.error ?? "get_available_models failed"));
+    }
+    const data = (res.data as Record<string, unknown> | undefined) ?? {};
+    return Array.isArray(data.models) ? data.models : [];
+  }
+
   async setThinkingLevel(level: string): Promise<void> {
     const res = await this.request({ type: "set_thinking_level", level });
     if (res.success === false) {

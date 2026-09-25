@@ -179,3 +179,56 @@ test("chat.js evaluates and renders tool message without ReferenceError", async 
 
   assert.equal(renderError, null);
 });
+
+test("OMP RPC live commands build correct payloads without settings.json", () => {
+  const buildSetModelPayload = (provider, modelId) => ({
+    type: "set_model",
+    provider,
+    modelId,
+  });
+  const buildSetThinkingPayload = (level) => ({
+    type: "set_thinking_level",
+    level,
+  });
+
+  const modelPayload = buildSetModelPayload("google-antigravity", "gemini-3.8-flash");
+  assert.deepEqual(modelPayload, {
+    type: "set_model",
+    provider: "google-antigravity",
+    modelId: "gemini-3.8-flash",
+  });
+
+  const thinkingPayload = buildSetThinkingPayload("medium");
+  assert.deepEqual(thinkingPayload, {
+    type: "set_thinking_level",
+    level: "medium",
+  });
+});
+
+test("OMP start arguments omit model and thinking by default to preserve OMP global config", () => {
+  const buildArgs = (cwd, options = {}) => {
+    const args = ["--mode", "rpc", "--cwd", cwd];
+    if (options.model) args.push("--model", options.model);
+    if (options.thinking) args.push("--thinking", options.thinking);
+    return args;
+  };
+
+  // When starting clean without settings.json overrides
+  const cleanArgs = buildArgs("/workspace", {});
+  assert.deepEqual(cleanArgs, ["--mode", "rpc", "--cwd", "/workspace"]);
+  assert.equal(cleanArgs.includes("--model"), false);
+  assert.equal(cleanArgs.includes("--thinking"), false);
+
+  // When user explicitly selected an override in memory
+  const overrideArgs = buildArgs("/workspace", { model: "anthropic/claude-3-5-sonnet", thinking: "high" });
+  assert.deepEqual(overrideArgs, [
+    "--mode",
+    "rpc",
+    "--cwd",
+    "/workspace",
+    "--model",
+    "anthropic/claude-3-5-sonnet",
+    "--thinking",
+    "high",
+  ]);
+});

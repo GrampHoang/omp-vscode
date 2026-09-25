@@ -33,7 +33,7 @@ export function setTitleExtensionRoot(root: string | undefined): void {
 }
 
 function resolveTitleExtensionPath(): string | undefined {
-  const enabled = vscode.workspace.getConfiguration("ompChat").get<boolean>("autoTitle", true);
+  const enabled = vscode.workspace.getConfiguration("ompChatExtend").get<boolean>("autoTitle", true);
   if (!enabled) {
     return undefined;
   }
@@ -52,7 +52,7 @@ function resolveTitleExtensionPath(): string | undefined {
       return candidate;
     }
   }
-  logWarn("ompChat.autoTitle is on but session-title.js was not found", {
+  logWarn("ompChatExtend.autoTitle is on but session-title.js was not found", {
     root: titleExtensionRoot,
     candidates,
   });
@@ -88,6 +88,8 @@ export class SessionManager {
   private thinkingStartedAt: number | undefined;
   private thinkingLevel: string | undefined;
   private advisorEnabled = false;
+  private runtimeModel: string | undefined;
+  private approvalMode: string | undefined;
   /** Delayed get_state polls while waiting for the async title extension. */
   private titleRefreshTimers: ReturnType<typeof setTimeout>[] = [];
 
@@ -176,14 +178,15 @@ export class SessionManager {
     if (this.sessionModel?.id) {
       return this.sessionModel.id;
     }
-    const cfgModel = vscode.workspace.getConfiguration("ompChat").get<string>("model", "");
-    return cfgModel && cfgModel.trim() ? cfgModel.trim() : "Model";
+    if (this.runtimeModel) {
+      return this.runtimeModel;
+    }
+    return "Model";
   }
 
   getThinkingLevel(): string | undefined {
-    return this.thinkingLevel ?? (vscode.workspace.getConfiguration("ompChat").get<string>("thinking", "") || undefined);
+    return this.thinkingLevel;
   }
-
   isReasoningSupported(): boolean {
     if (this.sessionModel) {
       return Boolean(this.sessionModel.reasoning || this.sessionModel.thinking);
@@ -201,6 +204,46 @@ export class SessionManager {
       }
     }
     this.notify();
+  }
+  async setModel(provider: string, modelId: string): Promise<void> {
+    this.runtimeModel = provider ? `${provider}/${modelId}` : modelId;
+    if (this.client?.isReady) {
+      try {
+        await this.client.setModel(provider, modelId);
+        await this.refreshSessionState();
+      } catch (err) {
+        logWarn("Failed to set model via RPC", err);
+        throw err;
+      }
+    }
+    this.notify();
+  }
+
+  async cycleThinkingLevel(): Promise<string | null> {
+    if (this.client?.isReady) {
+      try {
+        const next = await this.client.cycleThinkingLevel();
+        if (next) {
+          this.thinkingLevel = next;
+          this.notify();
+        }
+        return next;
+      } catch (err) {
+        logWarn("Failed to cycle thinking level via RPC", err);
+      }
+    }
+    return null;
+  }
+
+  async getAvailableModels(): Promise<unknown[]> {
+    if (this.client?.isReady) {
+      try {
+        return await this.client.getAvailableModels();
+      } catch (err) {
+        logWarn("Failed to get available models via RPC", err);
+      }
+    }
+    return [];
   }
 
   isAdvisorEnabled(): boolean {
@@ -240,14 +283,14 @@ export class SessionManager {
   }
 
   private readConfig(overrides?: Partial<OmpClientOptions>): OmpClientOptions {
-    const cfg = vscode.workspace.getConfiguration("ompChat");
+    const cfg = vscode.workspace.getConfiguration("ompChatExtend");
     return {
       ompPath: cfg.get<string>("ompPath", "omp") || "omp",
       cwd: this.getWorkspaceCwd(),
-      model: cfg.get<string>("model", "") || undefined,
-      thinking: cfg.get<string>("thinking", "") || undefined,
-      approvalMode: cfg.get<string>("approvalMode", "") || undefined,
-      autoApprove: cfg.get<boolean>("autoApprove", false),
+      model: overrides?.model !== undefined ? overrides.model : this.runtimeModel,
+      thinking: overrides?.thinking !== undefined ? overrides.thinking : this.thinkingLevel,
+      approvalMode: overrides?.approvalMode !== undefined ? overrides.approvalMode : this.approvalMode,
+      autoApprove: false,
       continueLastSession: cfg.get<boolean>("continueLastSession", false),
       extraArgs: cfg.get<string[]>("extraArgs", []),
       titleExtensionPath: resolveTitleExtensionPath(),
@@ -264,7 +307,7 @@ export class SessionManager {
 
   private defaultStartOptions(): Partial<OmpClientOptions> {
     const continueEnabled = vscode.workspace
-      .getConfiguration("ompChat")
+      .getConfiguration("ompChatExtend")
       .get<boolean>("continueLastSession", true);
     if (!continueEnabled) {
       return { continueLastSession: false, resumeSessionId: undefined };
@@ -403,13 +446,13 @@ export class SessionManager {
     client.off("stderr", stderrCollector);
   }
 
-  async restart(): Promise<void> {
+  async restart(overrides?: Partial<OmpClientOptions>): Promise<void> {
     const resumeId = this.sessionId ?? this.sessionIdStore?.get();
     if (resumeId) {
-      await this.start({ resumeSessionId: resumeId, continueLastSession: false });
+      await this.start({ resumeSessionId: resumeId, continueLastSession: false, ...overrides });
       return;
     }
-    await this.start(this.defaultStartOptions());
+    await this.start({ ...this.defaultStartOptions(), ...overrides });
   }
 
   async newChat(): Promise<void> {
@@ -835,7 +878,7 @@ export class SessionManager {
     if (this.sessionTitle) {
       return;
     }
-    const enabled = vscode.workspace.getConfiguration("ompChat").get<boolean>("autoTitle", true);
+    const enabled = vscode.workspace.getConfiguration("ompChatExtend").get<boolean>("autoTitle", true);
     if (!enabled) {
       return;
     }

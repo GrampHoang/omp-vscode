@@ -9,29 +9,41 @@ This document tracks upcoming features, improvements, and backlog items for the 
 ### 1. Slash Commands Expansion
 - [ ] **`/resume [id]`:** Add `/resume` slash command to pick and resume past OMP sessions directly in the current chat tab (with QuickPick session search).
 - [ ] **Native OMP Slash Commands:** Wire native OMP RPC commands into autocomplete and routing:
-  - `/compact` — Trigger context compaction/summarization to free up token budget.
-  - `/export` — Export conversation thread to standalone HTML or Markdown.
-  - `/share` — Create an end-to-end encrypted web share link.
-  - `/usage` — Detailed context usage and token reports.
+  - [x] `/compact` — Trigger context compaction/summarization to free up token budget.
+  - [ ] `/export` — Export conversation thread to standalone HTML or Markdown.
+  - [ ] `/share` — Create an end-to-end encrypted web share link.
+  - [x] `/usage` — Detailed context usage and token reports.
+  - [x] `/shake` — Shake and free soft memory.
 - [ ] **`/skill:*` Autocomplete:** Expose all project skills (e.g. `/skill:brainstorming`, `/skill:test-driven-development`, `/skill:systematic-debugging`) in the composer's slash-command autocomplete menu.
 
 ### 2. Approval Modes Popover (Replacing "Agent" Button)
-- [ ] **Replace Dummy `#modeBtn`:** Remove the cosmetic "Agent" pill (inherited from Cursor UI) that cycles dummy strings.
-- [ ] **Approval Mode Selector:** Replace it with an in-place dropdown popover:
+- [x] **Replace Dummy `#modeBtn`:** Removed the cosmetic "Agent" pill that cycled dummy strings.
+- [x] **Approval Mode Selector:** Replaced with an in-place dropdown popover:
   - `Approval: YOLO ▾` — Full autonomous speed (auto-approve all tools).
   - `Approval: Write ▾` — Auto-approve read tools; ask before writing or running terminal commands.
   - `Approval: Ask ▾` — Interactive confirmation for every tool call.
-- [ ] **Live RPC / Config Sync:** Update active session approval mode live without requiring manual edits in `settings.json`.
+- [x] **Live RPC / Config Sync:** Updated active session approval mode live via RPC restart and configuration persistence.
 
 ### 3. Workflow & Skills Execution Popover
 - [ ] **Workflow Popover Button:** Add an in-place dropdown popover in the composer for defined workflows.
 - [ ] **One-Click Skill Triggering:** Search and trigger project workflows directly from the composer without typing commands.
 - [ ] **Execution Policy & Prewalk:** Toggle prewalk mode (switching from reasoning planner model to fast implementer model after plan creation).
 
-### 4. Distinct User Prompt Styling & Contrast
+### 4. Composer Action Bar Overflow in Narrow Sidebars
+- [ ] **The Problem:** In narrow viewports (<350px wide), the left controls (`Model` + `Thinking` + `Agent` + `Context Usage`) and the right buttons (`Toggles`, `Attach`, `Stop`, `Send`) collide horizontally. Because `.composer-actions` defaults to `nowrap`, the right-side elements (including the Send button) get pushed out of bounds past the right edge of the screen.
+- [x] **Unshrinkable Right Actions:** Set `.right-actions { flex-shrink: 0; margin-left: auto; }` so the Send, Attach, and Toggle buttons are guaranteed to stay fully on-screen at all times.
+- [x] **Adaptive Left Pills:** Made `.left-actions` shrinkable with `min-width: 0; flex-wrap: wrap; row-gap: 4px;` and enforced tighter ellipsis caps on `.pill-label` (70–80px).
+- [x] **Drop Dummy "Agent" Pill:** Removed the unused "Agent" button, recovering ~60px of horizontal space.
+- [x] **Combine Stop and Send into a Single Dual-State Button:** Eliminated the separate `#stopBtn` entirely. Uses a single modern button (like Claude/ChatGPT/Cursor):
+  - When idle: shows `↑` (Send).
+  - When generating with empty input: morphs into `■` (Stop) to cancel generation.
+  - When generating with typed text: morphs into `+` (Queue) to queue a follow-up prompt.
+  - Saves an entire button slot (~36px) and eliminates jarring layout shifts when the Stop button pops in and out.
+- [x] **Compact Reasoning Pill:** Removed the word "Thinking:" so it displays just the level (`med ▾`, `high ▾`, `off ▾`), saving ~55px of space.
+### 5. Distinct User Prompt Styling & Contrast
 - [ ] **The Problem:** Current `.msg.user .bubble` uses `--chip` (`color-mix(in srgb, var(--text) 5%, transparent)`), which blends directly into the VS Code sidebar background and makes it hard to distinguish user prompts from assistant replies when scanning the chat.
-- [ ] **Elevated Prompt Background:** Style user prompt bubbles with a distinctly elevated, higher-contrast background (e.g. `color-mix(in srgb, var(--vscode-editorWidget-background, var(--panel)) 85%, var(--link) 8%)`).
-- [ ] **Visual Distinction Marker:** Add a subtle accent border (e.g. left border in `var(--link)`) or a clean "You" sender label to make scrolling through past conversation turns effortless.
+- [x] **Elevated Prompt Background:** Styled user prompt bubbles with a distinctly elevated, higher-contrast background (`color-mix` with `var(--panel)` and `var(--link)` tint).
+- [x] **Visual Distinction Marker:** Added an accent border on the left (`border-left: 3px solid var(--link)`) and elevation shadow to make scrolling through past conversation turns effortless.
 
 ---
 
