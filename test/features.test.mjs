@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 test("isSlashCommand recognizes newly added and legacy commands", () => {
   const known = {
@@ -273,4 +274,77 @@ test("turn progress formats elapsed time and active tool/thinking action", () =>
     ]),
     "Responding…"
   );
+});
+
+test("renderMarkdownish parses fenced codeblocks without inverting subsequent text on inline backticks", () => {
+  const code = fs.readFileSync("media/chat.js", "utf8");
+
+  let messagesInnerHTML = "";
+  const mockEl = (id = "") => ({
+    id,
+    addEventListener: () => {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: {},
+    setAttribute: () => {},
+    getAttribute: () => null,
+    hidden: false,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    contains: () => false,
+    childNodes: [],
+    children: [],
+    innerHTML: "",
+  });
+
+  let messageHandler = null;
+  const messagesEl = {
+    ...mockEl("messages"),
+    get innerHTML() { return messagesInnerHTML; },
+    set innerHTML(val) { messagesInnerHTML = val; },
+  };
+  const jsdom = {
+    getElementById: (id) => (id === "messages" ? messagesEl : mockEl(id)),
+    addEventListener: (event, handler) => {
+      if (event === "message") messageHandler = handler;
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  };
+
+  globalThis.document = jsdom;
+  globalThis.window = jsdom;
+  globalThis.acquireVsCodeApi = () => ({ postMessage: () => {} });
+
+  const fn = new Function(code);
+  fn();
+
+  assert.equal(typeof messageHandler, "function");
+  console.error = (...args) => console.log("TEST ERROR:", ...args);
+  const input = `In markdown you use \`\`\` for code blocks:
+\`\`\`
+[spinner] Thinking (12s) · Analyzing git status...
+\`\`\`
+or
+\`\`\`
+[spinner] Working (28s) · bash "npm test"
+\`\`\`
+`;
+
+  messageHandler({
+    data: {
+      type: "ready",
+      status: { state: "ready" },
+      messages: [
+        {
+          id: "m1",
+          role: "assistant",
+          parts: [{ kind: "text", text: input }],
+        },
+      ],
+    },
+  });
+  assert.equal(messagesInnerHTML.includes("class=\"md-pre\""), true);
+  assert.equal(messagesInnerHTML.includes("<p>or</p>"), true);
+  assert.equal(messagesInnerHTML.includes("Thinking (12s)"), true);
+  assert.equal(messagesInnerHTML.includes("Working (28s)"), true);
 });

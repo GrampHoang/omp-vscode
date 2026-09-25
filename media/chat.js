@@ -423,21 +423,59 @@
 
   function renderMarkdownish(text) {
     const raw = String(text == null ? "" : text);
-    const parts = raw.split(/```/);
-    let html = "";
-    for (let i = 0; i < parts.length; i++) {
-      if (i % 2 === 0) {
-        html += renderMarkdownBlocks(parts[i]);
-      } else {
-        const block = parts[i];
-        const nl = block.indexOf("\n");
-        let lang = "";
-        let code = block;
-        if (nl >= 0) {
-          lang = block.slice(0, nl).trim();
-          code = block.slice(nl + 1);
+    if (!raw.trim()) return "<p></p>";
+
+    const lines = raw.split(/\r?\n/);
+    const blocks = [];
+    let inCode = false;
+    let fence = "";
+    let lang = "";
+    let currentLines = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!inCode) {
+        const match = line.match(/^[ \t]*(`{3,}|~{3,})(.*)$/);
+        if (match) {
+          if (currentLines.length) {
+            blocks.push({ type: "text", content: currentLines.join("\n") });
+            currentLines = [];
+          }
+          inCode = true;
+          fence = match[1];
+          lang = match[2].trim();
+        } else {
+          currentLines.push(line);
         }
-        html += renderCodeBlock(lang, code);
+      } else {
+        const closeMatch = line.match(/^[ \t]*(`{3,}|~{3,})[ \t]*$/);
+        if (closeMatch && closeMatch[1][0] === fence[0] && closeMatch[1].length >= fence.length) {
+          blocks.push({ type: "code", lang: lang, code: currentLines.join("\n") });
+          currentLines = [];
+          inCode = false;
+          fence = "";
+          lang = "";
+        } else {
+          currentLines.push(line);
+        }
+      }
+    }
+
+    if (currentLines.length) {
+      if (inCode) {
+        blocks.push({ type: "code", lang: lang, code: currentLines.join("\n") });
+      } else {
+        blocks.push({ type: "text", content: currentLines.join("\n") });
+      }
+    }
+
+    let html = "";
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+      if (b.type === "code") {
+        html += renderCodeBlock(b.lang, b.code);
+      } else if (b.content && b.content.trim()) {
+        html += renderMarkdownBlocks(b.content);
       }
     }
     return html || "<p></p>";
