@@ -4,80 +4,65 @@ This document tracks upcoming features, improvements, and backlog items for the 
 
 ---
 
-## 🎯 Next Sprint Priorities
-
-### 1. Slash Commands Expansion
-- [ ] **`/resume [id]`:** Add `/resume` slash command to pick and resume past OMP sessions directly in the current chat tab (with QuickPick session search).
-- [ ] **Native OMP Slash Commands:** Wire native OMP RPC commands into autocomplete and routing:
-  - [x] `/compact` — Trigger context compaction/summarization to free up token budget.
-  - [ ] `/export` — Export conversation thread to standalone HTML or Markdown.
-  - [ ] `/share` — Create an end-to-end encrypted web share link.
-  - [x] `/usage` — Detailed context usage and token reports.
-  - [x] `/shake` — Shake and free soft memory.
-- [ ] **`/skill:*` Autocomplete:** Expose all project skills (e.g. `/skill:brainstorming`, `/skill:test-driven-development`, `/skill:systematic-debugging`) in the composer's slash-command autocomplete menu.
-
-### 2. Approval Modes Popover (Replacing "Agent" Button)
-- [x] **Replace Dummy `#modeBtn`:** Removed the cosmetic "Agent" pill that cycled dummy strings.
-- [x] **Approval Mode Selector:** Replaced with an in-place dropdown popover:
-  - `Approval: YOLO ▾` — Full autonomous speed (auto-approve all tools).
-  - `Approval: Write ▾` — Auto-approve read tools; ask before writing or running terminal commands.
-  - `Approval: Ask ▾` — Interactive confirmation for every tool call.
-- [x] **Live RPC / Config Sync:** Updated active session approval mode live via RPC restart and configuration persistence.
-
-### 3. Workflow & Skills Execution Popover
-- [ ] **Workflow Popover Button:** Add an in-place dropdown popover in the composer for defined workflows.
-- [ ] **One-Click Skill Triggering:** Search and trigger project workflows directly from the composer without typing commands.
-- [ ] **Execution Policy & Prewalk:** Toggle prewalk mode (switching from reasoning planner model to fast implementer model after plan creation).
-
-### 4. Composer Action Bar Overflow in Narrow Sidebars
-- [ ] **The Problem:** In narrow viewports (<350px wide), the left controls (`Model` + `Thinking` + `Agent` + `Context Usage`) and the right buttons (`Toggles`, `Attach`, `Stop`, `Send`) collide horizontally. Because `.composer-actions` defaults to `nowrap`, the right-side elements (including the Send button) get pushed out of bounds past the right edge of the screen.
-- [x] **Unshrinkable Right Actions:** Set `.right-actions { flex-shrink: 0; margin-left: auto; }` so the Send, Attach, and Toggle buttons are guaranteed to stay fully on-screen at all times.
-- [x] **Adaptive Left Pills:** Made `.left-actions` shrinkable with `min-width: 0; flex-wrap: wrap; row-gap: 4px;` and enforced tighter ellipsis caps on `.pill-label` (70–80px).
-- [x] **Drop Dummy "Agent" Pill:** Removed the unused "Agent" button, recovering ~60px of horizontal space.
-- [x] **Combine Stop and Send into a Single Dual-State Button:** Eliminated the separate `#stopBtn` entirely. Uses a single modern button (like Claude/ChatGPT/Cursor):
-  - When idle: shows `↑` (Send).
-  - When generating with empty input: morphs into `■` (Stop) to cancel generation.
-  - When generating with typed text: morphs into `+` (Queue) to queue a follow-up prompt.
-  - Saves an entire button slot (~36px) and eliminates jarring layout shifts when the Stop button pops in and out.
-- [x] **Compact Reasoning Pill:** Removed the word "Thinking:" so it displays just the level (`med ▾`, `high ▾`, `off ▾`), saving ~55px of space.
-### 5. Distinct User Prompt Styling & Contrast
-- [ ] **The Problem:** Current `.msg.user .bubble` uses `--chip` (`color-mix(in srgb, var(--text) 5%, transparent)`), which blends directly into the VS Code sidebar background and makes it hard to distinguish user prompts from assistant replies when scanning the chat.
-- [x] **Elevated Prompt Background:** Styled user prompt bubbles with a distinctly elevated, higher-contrast background (`color-mix` with `var(--panel)` and `var(--link)` tint).
-- [x] **Visual Distinction Marker:** Added an accent border on the left (`border-left: 3px solid var(--link)`) and elevation shadow to make scrolling through past conversation turns effortless.
-
----
-
 ## 🚀 Completed in v0.8.0 Fork & Live OMP Sync
 
-### Independent Extension Fork
-- [x] **Namespace & Identity Isolation:** Forked and packaged as `gramphoang.oh-my-pi-chat-extend` ("GramHoang OMP Chat Extend") with dedicated activity bar container (`OMP Extend`), commands (`ompChatExtend.*`), views, and separate storage to run side-by-side with upstream OMP Chat without conflicts.
+### 1. Independent Extension Fork & Identity Isolation
+- [x] **Separate Identity & Package:** Forked and packaged as `gramphoang.oh-my-pi-chat-extend` ("GramHoang OMP Chat Extend") with dedicated activity bar container (`OMP Extend`), commands (`ompChatExtend.*`), views, and separate storage to run side-by-side with upstream OMP Chat without conflicts.
 
-### Native OMP Synchronization (Decoupled from `settings.json`)
+### 2. Native OMP Synchronization (Decoupled from `settings.json`)
 - [x] **Zero `.vscode/settings.json` Writes:** Removed all writes and mandatory reads for `model`, `thinking`, `approvalMode`, and display toggles from `settings.json`.
 - [x] **Preserve OMP Global Config:** OMP launches with its native user defaults (`~/.omp/agent/config.yml`) without forced CLI flags.
 - [x] **Live Dynamic Model Switching:** Switched model live in active sessions using OMP RPC `set_model` (`{ type: "set_model", provider, modelId }`) without session restarts.
 - [x] **Live Thinking Level Switching:** Updated reasoning effort live using OMP RPC `set_thinking_level` and `cycle_thinking_level`.
 - [x] **RPC Available Models:** Implemented `get_available_models` via active RPC client.
 
-### Live Codex-Style Turn Progress & Action Status
+### 3. Live Turn Progress & Action Tracking (Codex-Style)
 - [x] **Live Elapsed Turn Timer:** Real-time ticker (`1s`, `2s`, ... `14s`, `1m 02s`) measuring total elapsed time for active assistant turns.
 - [x] **Active Step / Action Badge:** Dynamic badge displaying the last/current action (`Running bash: npm test`, `Thinking: <snippet>`, `Completed tool · next step...`, `Responding...`) so users always know the model is actively progressing through multi-step tasks.
+- [x] **Thinking Block Duration & Live Thought Preview:**
+  - Dynamic duration label: `Thinking for 12s` (live) and `Thought for 14s` (completed).
+  - Subtle one-line preview (`.thinking-preview`) in the collapsed summary showing the latest thought line in real time without needing to expand the card.
+
+### 4. Robust Markdown Fenced Codeblock Parsing
+- [x] **Fixed Inverted Backtick Bug:** Replaced naive `raw.split(/```/)` with a CommonMark-compliant line-anchored fence parser. Inline backticks in explanations no longer invert codeblocks or turn text like `or` into code.
+- [x] **Unclosed Streaming Blocks:** Code blocks in active streaming responses remain cleanly confined without corrupting subsequent text.
+
+### 5. Composer Action Bar & UI Density
+- [x] **Composer Layout in Narrow Viewports (<350px):**
+  - Right-side actions (`Send`, `Attach`, `Toggles`) locked with `flex-shrink: 0; margin-left: auto;` to prevent overflow clipping.
+  - Left-side pills wrap gracefully with tighter text ellipsis caps (70–80px).
+- [x] **Unified Dual-State Send/Stop Button:** Combined separate Send and Stop buttons into one adaptive control (Send `↑`, Stop `■`, Queue `+`).
+- [x] **Approval Modes Dropdown Popover:** Replaced dummy "Agent" pill with a functional approval mode popover (`YOLO`, `Write`, `Ask`).
+- [x] **Distinct User Prompt Styling:** Elevated prompt bubble contrast with left accent border (`border-left: 3px solid var(--link)`) and subtle tinting.
 
 ---
 
-## 🛠️ Stability & Performance Fixes (Investigated Issues)
+## 🎯 Next Sprint Priorities
 
-### 5. Multi-Window Session File Contention & Queue Freeze
-- [ ] **The Problem:** Running two sessions (e.g. work extension + dev preview, or two windows) with `--continue` attaches both processes to the exact same `.jsonl` session database file. When a turn completes, concurrent writes trigger OMP's `Session persistence failed: Session file changed before rewrite` retry loop. Because OMP is trapped in write retries, `agent_end` never fires, the UI remains in an endless circling loop (`busy`), and queued messages are never dispatched.
+### 1. Slash Commands & Skills Autocomplete
+- [ ] **`/resume [id]`:** Add `/resume` slash command to pick and resume past OMP sessions directly in the current chat tab (with QuickPick session search).
+- [ ] **`/skill:*` Autocomplete:** Expose all project skills (e.g. `/skill:brainstorming`, `/skill:test-driven-development`, `/skill:systematic-debugging`) in the composer's slash-command autocomplete menu.
+- [ ] **Native OMP Slash Commands:**
+  - [x] `/compact` — Trigger context compaction/summarization.
+  - [x] `/usage` — Detailed context usage report.
+  - [x] `/shake` — Shake and free soft memory.
+  - [ ] `/export` — Export conversation thread to standalone HTML or Markdown.
+  - [ ] `/share` — Create an end-to-end encrypted web share link.
+
+### 2. Multi-Window Session File Contention & Queue Freeze
+- [ ] **The Problem:** Running two sessions with `--continue` attaches both processes to the exact same `.jsonl` session file, triggering write contention retries where `agent_end` never fires and queued messages remain frozen.
 - [ ] **Session Isolation:** Ensure each window/tab generates an isolated session ID at startup rather than blindly sharing the latest global `--continue` target.
 - [ ] **Contention Auto-Fork:** Detect `Session persistence failed` notices on stderr and automatically fork the session to a fresh file to break the retry loop.
-- [ ] **Safety Settle Fallback:** Add a safety turn-settle timer (e.g. 2–3s after text streaming completes) so queued follow-up prompts are never held hostage if a backend `agent_end` event is delayed or lost.
+- [ ] **Safety Settle Fallback:** Add a safety turn-settle timer (2–3s after text streaming completes) so queued follow-up prompts are never held hostage.
 
-### 6. Webview Freeze & VS Code Renderer Crash on Large Outputs
-- [ ] **The Problem:** In `src/omp/sessionHistory.ts:357`, historical tool outputs are hydrated using `outputPreview: textFromContent(row.content)`. Unlike live turns (which cap previews at 400–800 chars), `textFromContent` has no character limit. If a tool read a large file or dumped a huge terminal log, multi-megabyte raw text strings are loaded into message state. When `postState()` serializes this and the webview runs `messagesEl.innerHTML = ...`, Chromium freezes performing layout reflow and DOM parsing on hundreds of thousands of characters, triggering VS Code's "window not responding" watchdog and crashing the editor (while normal OMP CLI runs fine in its lightweight terminal buffer).
+### 3. Webview Freeze & VS Code Renderer Crash on Large Outputs
+- [ ] **The Problem:** Historical tool outputs in `sessionHistory.ts` have no character limit. Multi-megabyte raw text dumps trigger Chromium reflow freezes and VS Code "window not responding" crashes.
 - [ ] **Bounded Historical Previews:** Enforce a hard ceiling (e.g. max 1,000–2,000 characters) on historical tool output previews in `sessionHistory.ts`.
-- [ ] **Lazy-Mounted Tool Bodies:** Avoid injecting thousands of lines into the DOM for collapsed tool cards; only mount full outputs when the user explicitly clicks to expand that specific card.
+- [ ] **Lazy-Mounted Tool Bodies:** Avoid injecting thousands of lines into the DOM for collapsed tool cards; mount full outputs only when explicitly expanded.
 
+### 4. Interactive File Diff & Review
+- [ ] **`[View Diff]` on Tool Cards:** Add an action button on file edit/write tool cards that opens VS Code's native side-by-side diff editor (`vscode.diff(originalUri, currentUri)`).
+- [ ] **Inline Syntax Highlighting:** Enhanced diff previews directly inside chat cards.
 ## 💡 Backlog & Feature Suggestions
 
 ### 7. Interactive File Diff & Review
