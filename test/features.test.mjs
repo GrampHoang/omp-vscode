@@ -420,3 +420,96 @@ test("thinking block includes live duration label and latest thinking snippet pr
   assert.equal(messagesInnerHTML.includes("class=\"thinking-preview\""), true);
   assert.equal(messagesInnerHTML.includes("Verified extension configuration"), true);
 });
+
+test("active status bar is displayed above composer during busy turns even when thinking and tools are hidden", () => {
+  const code = fs.readFileSync("media/chat.js", "utf8");
+
+  globalThis.Node = { TEXT_NODE: 3, ELEMENT_NODE: 1 };
+  let statusBarHidden = true;
+  let statusBarTime = "";
+  let statusBarLabel = "";
+
+  const statusBarEl = {
+    id: "activeStatusBar",
+    get hidden() { return statusBarHidden; },
+    set hidden(val) { statusBarHidden = Boolean(val); },
+  };
+  const statusTimeEl = {
+    id: "activeStatusTime",
+    get textContent() { return statusBarTime; },
+    set textContent(val) { statusBarTime = String(val); },
+  };
+  const statusLabelEl = {
+    id: "activeStatusLabel",
+    get textContent() { return statusBarLabel; },
+    set textContent(val) { statusBarLabel = String(val); },
+  };
+
+  const mockEl = (id = "") => ({
+    id,
+    addEventListener: () => {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: {},
+    setAttribute: () => {},
+    getAttribute: () => null,
+    hidden: false,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    contains: () => false,
+    childNodes: [],
+    children: [],
+    innerHTML: "",
+  });
+
+  let messageHandler = null;
+  const jsdom = {
+    getElementById: (id) => {
+      if (id === "activeStatusBar") return statusBarEl;
+      if (id === "activeStatusTime") return statusTimeEl;
+      if (id === "activeStatusLabel") return statusLabelEl;
+      return mockEl(id);
+    },
+    addEventListener: (event, handler) => {
+      if (event === "message") messageHandler = handler;
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  };
+
+  globalThis.document = jsdom;
+  globalThis.window = jsdom;
+  globalThis.acquireVsCodeApi = () => ({ postMessage: () => {} });
+
+  const fn = new Function(code);
+  fn();
+
+  // When OMP is busy with hidden thinking and hidden tools
+  messageHandler({
+    data: {
+      type: "ready",
+      status: { state: "busy", detail: "Thinking…" },
+      showThinking: false,
+      showTools: false,
+      showTerminal: false,
+      messages: [
+        {
+          id: "m3",
+          role: "assistant",
+          streaming: true,
+          createdAt: Date.now() - 5000,
+          parts: [
+            {
+              kind: "thinking",
+              text: "Analyzing git status to prepare commit",
+              startedAt: Date.now() - 5000,
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.equal(statusBarHidden, false);
+  assert.equal(statusBarLabel.includes("Analyzing git status to prepare commit"), true);
+  assert.equal(statusBarTime.includes("s"), true);
+});

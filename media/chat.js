@@ -46,6 +46,11 @@
   const queueToggleLabelEl = document.getElementById("queueToggleLabel");
   const queueMenuEl = document.getElementById("queueMenu");
   const queueListEl = document.getElementById("queueList");
+  const activeStatusBarEl = document.getElementById("activeStatusBar");
+  const activeStatusTimeEl = document.getElementById("activeStatusTime");
+  const activeStatusLabelEl = document.getElementById("activeStatusLabel");
+  let activeTurnStartMs = 0;
+
 
   let state = {
     status: { state: "starting", detail: "Starting…" },
@@ -733,6 +738,7 @@
         }
       });
     }, 500);
+    if (typeof thinkingTimer.unref === "function") thinkingTimer.unref();
   }
 
   function normalizeToolKey(name) {
@@ -1497,10 +1503,53 @@
     );
   }
 
+  function isOmpActive() {
+    if (state.status && state.status.state === "busy") return true;
+    const transcript = getTranscriptMessages();
+    const last = transcript.length ? transcript[transcript.length - 1] : null;
+    return Boolean(last && last.role === "assistant" && last.streaming);
+  }
+
+  function getActiveTurnDescription() {
+    const transcript = getTranscriptMessages();
+    const last = transcript.length ? transcript[transcript.length - 1] : null;
+    if (!last || last.role !== "assistant") {
+      return state.status && state.status.detail ? state.status.detail : "Thinking…";
+    }
+    return getLastActionDescription(last);
+  }
+
+  function renderActiveStatusBar() {
+    if (!activeStatusBarEl) return;
+    const active = isOmpActive();
+    if (!active) {
+      activeStatusBarEl.hidden = true;
+      activeTurnStartMs = 0;
+      return;
+    }
+    if (!activeTurnStartMs) {
+      const transcript = getTranscriptMessages();
+      const last = transcript.length ? transcript[transcript.length - 1] : null;
+      activeTurnStartMs = last && last.createdAt ? last.createdAt : Date.now();
+    }
+    activeStatusBarEl.hidden = false;
+    const elapsedMs = Math.max(0, Date.now() - activeTurnStartMs);
+    const timeStr = formatDuration(elapsedMs) || "<1s";
+    if (activeStatusTimeEl && activeStatusTimeEl.textContent !== timeStr) {
+      activeStatusTimeEl.textContent = timeStr;
+    }
+    const actionDesc = getActiveTurnDescription();
+    if (activeStatusLabelEl && activeStatusLabelEl.textContent !== actionDesc) {
+      activeStatusLabelEl.textContent = actionDesc;
+    }
+  }
+
   let turnProgressTimer = null;
   function syncTurnProgressTimer() {
+    const isBusy = isOmpActive();
     const hasStreaming = Boolean(document.querySelector(".turn-progress"));
-    if (!hasStreaming) {
+    renderActiveStatusBar();
+    if (!isBusy && !hasStreaming) {
       if (turnProgressTimer) {
         clearInterval(turnProgressTimer);
         turnProgressTimer = null;
@@ -1509,8 +1558,10 @@
     }
     if (turnProgressTimer) return;
     turnProgressTimer = setInterval(function () {
+      const isNowBusy = isOmpActive();
       const nodes = document.querySelectorAll(".turn-progress");
-      if (!nodes.length) {
+      renderActiveStatusBar();
+      if (!isNowBusy && !nodes.length) {
         clearInterval(turnProgressTimer);
         turnProgressTimer = null;
         return;
@@ -1536,6 +1587,7 @@
         }
       });
     }, 500);
+    if (typeof turnProgressTimer.unref === "function") turnProgressTimer.unref();
   }
 
   function generatingHtml(msg) {

@@ -1067,6 +1067,60 @@ button {
   font-weight: 500;
 }
 
+/* ---- Active Status Bar (Codex & OMP CLI live status bar above composer) ---- */
+.active-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px 0;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 85%, var(--link) 6%);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, var(--link) 20%);
+  color: var(--text);
+  font-size: 12px;
+  font-family: var(--font-family);
+  line-height: 1.35;
+  user-select: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  animation: active-status-fade 0.2s ease;
+}
+@keyframes active-status-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.active-status-spinner {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  border: 1.8px solid color-mix(in srgb, var(--link) 35%, transparent);
+  border-top-color: var(--link);
+  background: transparent;
+  flex: 0 0 auto;
+  animation: generating-spin 0.75s linear infinite;
+}
+.active-status-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--link);
+  flex: 0 0 auto;
+}
+.active-status-dot {
+  color: var(--muted);
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+.active-status-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-weight: 500;
+}
+
 @media (max-width: 320px) {
   .suggestions { grid-template-columns: 1fr; }
 }

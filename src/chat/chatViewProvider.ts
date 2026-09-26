@@ -567,6 +567,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       </div>
     </div>
     <footer class="composer-wrap">
+      <div id="activeStatusBar" class="active-status-bar" hidden aria-live="polite">
+        <span class="active-status-spinner" aria-hidden="true"></span>
+        <span id="activeStatusTime" class="active-status-time">0s</span>
+        <span class="active-status-dot" aria-hidden="true">·</span>
+        <span id="activeStatusLabel" class="active-status-label">Thinking…</span>
+      </div>
       <div class="composer">
         <div id="queuePanel" class="queue-panel" hidden>
           <button id="queueToggle" class="queue-toggle" type="button" aria-expanded="false" aria-controls="queueMenu" title="Queued messages">
