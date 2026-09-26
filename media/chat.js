@@ -1504,10 +1504,14 @@
   }
 
   function isOmpActive() {
-    if (state.status && state.status.state === "busy") return true;
     const transcript = getTranscriptMessages();
-    const last = transcript.length ? transcript[transcript.length - 1] : null;
-    return Boolean(last && last.role === "assistant" && last.streaming);
+    if (!transcript.length) return false;
+    const last = transcript[transcript.length - 1];
+    if (last && last.role === "assistant" && last.streaming) return true;
+    if (state.status && state.status.state === "busy") {
+      return transcript.some(function (m) { return m.role === "user"; });
+    }
+    return false;
   }
 
   function getActiveTurnDescription() {

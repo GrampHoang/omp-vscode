@@ -513,3 +513,65 @@ test("active status bar is displayed above composer during busy turns even when 
   assert.equal(statusBarLabel.includes("Analyzing git status to prepare commit"), true);
   assert.equal(statusBarTime.includes("s"), true);
 });
+
+test("active status bar stays hidden on clean startup when no prompts have been sent", () => {
+  const code = fs.readFileSync("media/chat.js", "utf8");
+  const css = fs.readFileSync("media/chat.css", "utf8");
+
+  // Verify CSS explicitly enforces [hidden] rule for active-status-bar
+  assert.equal(css.includes(".active-status-bar[hidden]"), true);
+  assert.equal(css.includes("[hidden] { display: none !important; }"), true);
+
+  globalThis.Node = { TEXT_NODE: 3, ELEMENT_NODE: 1 };
+  let statusBarHidden = true;
+
+  const statusBarEl = {
+    id: "activeStatusBar",
+    get hidden() { return statusBarHidden; },
+    set hidden(val) { statusBarHidden = Boolean(val); },
+  };
+
+  const mockEl = (id = "") => ({
+    id,
+    addEventListener: () => {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: {},
+    setAttribute: () => {},
+    getAttribute: () => null,
+    hidden: false,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    contains: () => false,
+    childNodes: [],
+    children: [],
+    innerHTML: "",
+  });
+
+  let messageHandler = null;
+  const jsdom = {
+    getElementById: (id) => (id === "activeStatusBar" ? statusBarEl : mockEl(id)),
+    addEventListener: (event, handler) => {
+      if (event === "message") messageHandler = handler;
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  };
+
+  globalThis.document = jsdom;
+  globalThis.window = jsdom;
+  globalThis.acquireVsCodeApi = () => ({ postMessage: () => {} });
+
+  const fn = new Function(code);
+  fn();
+
+  // Clean startup with empty messages and starting status
+  messageHandler({
+    data: {
+      type: "ready",
+      status: { state: "starting", detail: "Starting…" },
+      messages: [],
+    },
+  });
+
+  assert.equal(statusBarHidden, true);
+});

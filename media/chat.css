@@ -1,3 +1,4 @@
+[hidden] { display: none !important; }
 /* Cursor-like Agent sidebar */
 :root {
   --bg: var(--vscode-sideBar-background, #141414);
@@ -1068,6 +1069,9 @@ button {
 }
 
 /* ---- Active Status Bar (Codex & OMP CLI live status bar above composer) ---- */
+.active-status-bar[hidden] {
+  display: none !important;
+}
 .active-status-bar {
   display: flex;
   align-items: center;
