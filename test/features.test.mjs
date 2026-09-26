@@ -348,3 +348,75 @@ or
   assert.equal(messagesInnerHTML.includes("Thinking (12s)"), true);
   assert.equal(messagesInnerHTML.includes("Working (28s)"), true);
 });
+
+test("thinking block includes live duration label and latest thinking snippet preview", () => {
+  const code = fs.readFileSync("media/chat.js", "utf8");
+
+  globalThis.Node = { TEXT_NODE: 3, ELEMENT_NODE: 1 };
+  let messagesInnerHTML = "";
+  const mockEl = (id = "") => ({
+    id,
+    addEventListener: () => {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: {},
+    setAttribute: () => {},
+    getAttribute: () => null,
+    hidden: false,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    contains: () => false,
+    childNodes: [],
+    children: [],
+    innerHTML: "",
+  });
+
+  let messageHandler = null;
+  const messagesEl = {
+    ...mockEl("messages"),
+    get innerHTML() { return messagesInnerHTML; },
+    set innerHTML(val) { messagesInnerHTML = val; },
+  };
+  const jsdom = {
+    getElementById: (id) => (id === "messages" ? messagesEl : mockEl(id)),
+    addEventListener: (event, handler) => {
+      if (event === "message") messageHandler = handler;
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  };
+
+  globalThis.document = jsdom;
+  globalThis.window = jsdom;
+  globalThis.acquireVsCodeApi = () => ({ postMessage: () => {} });
+
+  const fn = new Function(code);
+  fn();
+
+  const thinkingText = "Starting to analyze project structure\n* Checking package.json\n- Verified extension configuration";
+
+  messageHandler({
+    data: {
+      type: "ready",
+      status: { state: "ready" },
+      messages: [
+        {
+          id: "m2",
+          role: "assistant",
+          parts: [
+            {
+              kind: "thinking",
+              text: thinkingText,
+              startedAt: Date.now() - 14000,
+              endedAt: Date.now(),
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.equal(messagesInnerHTML.includes("class=\"collapse thinking"), true);
+  assert.equal(messagesInnerHTML.includes("Thought for 14s"), true);
+  assert.equal(messagesInnerHTML.includes("class=\"thinking-preview\""), true);
+  assert.equal(messagesInnerHTML.includes("Verified extension configuration"), true);
+});

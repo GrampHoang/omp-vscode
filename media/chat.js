@@ -508,6 +508,18 @@
     if (!text) return "";
     return String(text).replace(/^\n+/, "").replace(/\n+$/, "");
   }
+  function latestThinkingSnippet(text) {
+    if (!text) return "";
+    const cleaned = cleanThinkingText(text).trim();
+    if (!cleaned) return "";
+    const lines = cleaned.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    if (!lines.length) return "";
+    const lastLine = lines[lines.length - 1];
+    const stripped = lastLine.replace(/^[*#\-–—>\s]+/, "").trim();
+    if (!stripped) return "";
+    return stripped.length > 55 ? stripped.slice(0, 53) + "…" : stripped;
+  }
+
 
   function patchThinkingPart(existing, msg, part, partIndex) {
     const collapseId = thinkingCollapseId(msg, partIndex);
@@ -540,6 +552,19 @@
       if (summaryLabel.textContent !== nextLabel) {
         summaryLabel.textContent = nextLabel;
       }
+    }
+    const previewEl = details.querySelector(".thinking-preview");
+    const nextSnippet = latestThinkingSnippet(nextText);
+    const expectedPreview = nextSnippet ? "· " + nextSnippet : "";
+    if (previewEl) {
+      if (previewEl.textContent !== expectedPreview) {
+        previewEl.textContent = expectedPreview;
+      }
+    } else if (expectedPreview && row) {
+      const span = document.createElement("span");
+      span.className = "thinking-preview";
+      span.textContent = expectedPreview;
+      row.appendChild(span);
     }
     return true;
   }
@@ -650,7 +675,7 @@
       }
       const ms = thinkingDurationMs(part, collapseId);
       const dur = formatDuration(ms);
-      return dur && ms >= 1000 ? "Thinking… " + dur : "Thinking…";
+      return dur && ms >= 1000 ? "Thinking for " + dur : "Thinking…";
     }
     if (collapseId) {
       const clock = thinkingClock.get(collapseId);
@@ -685,14 +710,27 @@
       nodes.forEach(function (details) {
         const id = details.getAttribute("data-collapse-id") || "";
         const title = details.querySelector(".collapse-title");
-        if (!title) return;
-        if (id && !thinkingClock.has(id)) {
-          thinkingClock.set(id, { startedAt: Date.now() });
+        const preview = details.querySelector(".thinking-preview");
+        const bodyEl = details.querySelector(".thinking-body");
+        if (title) {
+          if (id && !thinkingClock.has(id)) {
+            thinkingClock.set(id, { startedAt: Date.now() });
+          }
+          const clock = thinkingClock.get(id);
+          const ms = clock ? Date.now() - clock.startedAt : 0;
+          const dur = formatDuration(ms);
+          const nextTitle = dur && ms >= 1000 ? "Thinking for " + dur : "Thinking…";
+          if (title.textContent !== nextTitle) {
+            title.textContent = nextTitle;
+          }
         }
-        const clock = thinkingClock.get(id);
-        const ms = clock ? Date.now() - clock.startedAt : 0;
-        const dur = formatDuration(ms);
-        title.textContent = dur && ms >= 1000 ? "Thinking… " + dur : "Thinking…";
+        if (preview && bodyEl) {
+          const snippet = latestThinkingSnippet(bodyEl.textContent || "");
+          const expected = snippet ? "· " + snippet : "";
+          if (preview.textContent !== expected) {
+            preview.textContent = expected;
+          }
+        }
       });
     }, 500);
   }
@@ -1252,12 +1290,14 @@
       const streamClass = isLive ? " streaming" : "";
       const label = thinkingLabel(part, isLive, collapseId);
       const body = escapeHtml(cleanThinkingText(part.text || ""));
+      const snippet = latestThinkingSnippet(part.text || "");
       return (
         '<details class="collapse thinking' + liveClass + '" data-collapse-id="' + escapeHtml(collapseId) + '"' + openAttr + '>' +
           '<summary class="collapse-summary">' +
             '<span class="collapse-row">' +
               thinkingLeadIcon(isLive) +
               '<span class="collapse-title">' + escapeHtml(label) + '</span>' +
+              (snippet ? '<span class="thinking-preview">· ' + escapeHtml(snippet) + '</span>' : '<span class="thinking-preview"></span>') +
             '</span>' +
           '</summary>' +
           '<div class="collapse-body">' +
