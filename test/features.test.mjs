@@ -575,3 +575,83 @@ test("active status bar stays hidden on clean startup when no prompts have been 
 
   assert.equal(statusBarHidden, true);
 });
+
+test("native OMP RPC commands (export_html, get_session_stats, compact) build valid request payloads", () => {
+  const makeReq = (type, id = 1) => ({ type, id });
+
+  assert.deepEqual(makeReq("export_html"), { type: "export_html", id: 1 });
+  assert.deepEqual(makeReq("get_session_stats"), { type: "get_session_stats", id: 1 });
+  assert.deepEqual(makeReq("compact"), { type: "compact", id: 1 });
+});
+
+test("renderMarkdownish safely isolates inline <think> tags containing triple backticks without leaking", () => {
+  const code = fs.readFileSync("media/chat.js", "utf8");
+
+  globalThis.Node = { TEXT_NODE: 3, ELEMENT_NODE: 1 };
+  let messagesInnerHTML = "";
+  const mockEl = (id = "") => ({
+    id,
+    addEventListener: () => {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    style: {},
+    setAttribute: () => {},
+    getAttribute: () => null,
+    hidden: false,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    contains: () => false,
+    childNodes: [],
+    children: [],
+    innerHTML: "",
+  });
+
+  let messageHandler = null;
+  const messagesEl = {
+    ...mockEl("messages"),
+    get innerHTML() { return messagesInnerHTML; },
+    set innerHTML(val) { messagesInnerHTML = val; },
+  };
+  const jsdom = {
+    getElementById: (id) => (id === "messages" ? messagesEl : mockEl(id)),
+    addEventListener: (event, handler) => {
+      if (event === "message") messageHandler = handler;
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  };
+
+  globalThis.document = jsdom;
+  globalThis.window = jsdom;
+  globalThis.acquireVsCodeApi = () => ({ postMessage: () => {} });
+
+  const fn = new Function(code);
+  fn();
+
+  const inputWithThink = `<think>
+I need to check the code:
+\`\`\`ts
+const x = 1;
+\`\`\`
+Finished thinking
+</think>
+Here is the real answer outside the thinking block!`;
+
+  messageHandler({
+    data: {
+      type: "ready",
+      status: { state: "ready" },
+      messages: [
+        {
+          id: "m4",
+          role: "assistant",
+          parts: [{ kind: "text", text: inputWithThink }],
+        },
+      ],
+    },
+  });
+
+  // Verify thinking is wrapped in <pre class="thinking-body">
+  assert.equal(messagesInnerHTML.includes("class=\"collapse thinking\""), true);
+  assert.equal(messagesInnerHTML.includes("class=\"thinking-body\""), true);
+  assert.equal(messagesInnerHTML.includes("Here is the real answer outside the thinking block!"), true);
+});

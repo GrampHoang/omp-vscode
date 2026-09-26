@@ -338,6 +338,31 @@ export class OmpRpcClient extends EventEmitter {
     const data = res.data as { level?: string } | string | null;
     return typeof data === "string" ? data : (data?.level ?? null);
   }
+  async exportHtml(): Promise<{ path: string }> {
+    const res = await this.request({ type: "export_html" });
+    if (res.success === false) {
+      throw new Error(String(res.error ?? "export_html failed"));
+    }
+    const data = (res.data as Record<string, unknown> | undefined) ?? {};
+    return { path: String(data.path ?? "") };
+  }
+
+  async getSessionStats(): Promise<Record<string, unknown>> {
+    const res = await this.request({ type: "get_session_stats" });
+    if (res.success === false) {
+      throw new Error(String(res.error ?? "get_session_stats failed"));
+    }
+    return (res.data as Record<string, unknown>) ?? {};
+  }
+
+  async compact(): Promise<Record<string, unknown>> {
+    const res = await this.request({ type: "compact" });
+    if (res.success === false) {
+      throw new Error(String(res.error ?? "compact failed"));
+    }
+    return (res.data as Record<string, unknown>) ?? {};
+  }
+
 
   abort(): void {
     try {

@@ -4,6 +4,35 @@ This document tracks upcoming features, improvements, and backlog items for the 
 
 ---
 
+## 📝 Changes Since v0.8.0 (Unreleased / Next Tag Prep)
+
+### 1. Native OMP RPC Integration
+- [x] **Native HTML Session Export (`export_html`):**
+  - Added `$(file-code) Export as HTML (Native OMP)...` to the chat tab context menu.
+  - Added `/export` slash command with composer autocomplete.
+  - Calls OMP's native RPC `{ type: "export_html" }` and prompts user with `[Open in Browser]` and `[Reveal in File Explorer]` action buttons.
+- [x] **Detailed Token & Dollar Spend Stats (`get_session_stats`):**
+  - Calling `/stats`, `/usage`, or clicking the context usage pill now queries OMP's native `{ type: "get_session_stats" }` RPC method.
+  - Displays a clean QuickPick modal with exact calculated dollar spend (`$0.042`), context window usage, input/output/reasoning tokens, cache read tokens saved, and message/tool call counts.
+- [x] **Direct Native Context Compaction (`compact`):**
+  - `/compact` now triggers OMP's native `{ type: "compact" }` RPC method directly instead of injecting a prompt message.
+
+### 2. State & Toggle Persistence Across Window Reloads
+- [x] **WorkspaceState Toggle Persistence:**
+  - Migrated `showThinking`, `showTools`, `showTerminal`, `approvalMode`, and `advisorEnabled` to VS Code `workspaceState`.
+  - Reloading VS Code or restarting the extension preserves the user's exact toggle preferences without writing anything to `.vscode/settings.json`.
+
+### 3. Composer & Layout Enhancements
+- [x] **Wired Header "New Session" (`+`) Button:** Attached missing click listener in `media/chat.js` so clicking `+` immediately opens a new chat tab.
+- [x] **Slash Command Autocomplete:** Added `/export` and `/stats` to composer `SLASH_COMMANDS` popover.
+- [x] **Balanced Prompt Bubble Styling:** Cleaned up user prompt bubble appearance with a subtle elevated background tint, soft ambient shadow, and balanced all-around border instead of an uneven thick left stripe.
+
+### 4. Bug Fixes & Rendering Isolation
+- [x] **Context Usage Circle Live Updates:** Fixed a bug where `contextUsage` was omitted from the webview's `{ type: "ready" }` state handler, causing the usage circle to freeze at 0%.
+- [x] **Thinking Block Codeblock Isolation:** Fixed an issue where triple backticks inside thoughts could break out of thinking folds. Inline `<think>` / `<thought>` blocks are now safely extracted and isolated into escaped `<pre class="thinking-body">` tags where code fences cannot leak or corrupt the conversation.
+
+---
+
 ## 🚀 Completed in v0.8.0 Fork & Live OMP Sync
 
 ### 1. Independent Extension Fork & Identity Isolation
@@ -46,7 +75,7 @@ This document tracks upcoming features, improvements, and backlog items for the 
   - [x] `/compact` — Trigger context compaction/summarization.
   - [x] `/usage` — Detailed context usage report.
   - [x] `/shake` — Shake and free soft memory.
-  - [ ] `/export` — Export conversation thread to standalone HTML or Markdown.
+  - [x] `/export` — Export conversation thread to standalone HTML via native OMP RPC.
   - [ ] `/share` — Create an end-to-end encrypted web share link.
 
 ### 2. Multi-Window Session File Contention & Queue Freeze
@@ -64,10 +93,6 @@ This document tracks upcoming features, improvements, and backlog items for the 
 - [ ] **`[View Diff]` on Tool Cards:** Add an action button on file edit/write tool cards that opens VS Code's native side-by-side diff editor (`vscode.diff(originalUri, currentUri)`).
 - [ ] **Inline Syntax Highlighting:** Enhanced diff previews directly inside chat cards.
 ## 💡 Backlog & Feature Suggestions
-
-### 7. Interactive File Diff & Review
-- [ ] **`[View Diff]` on Tool Cards:** Add an action button on file edit/write tool cards that opens VS Code's native side-by-side diff editor (`vscode.diff(originalUri, currentUri)`).
-- [ ] **Inline Syntax Highlighting:** Enhanced diff previews directly inside chat cards.
 
 ### 8. Inline Turn Rollback ("Undo Changes")
 - [ ] **Undo Changes Button:** One-click revert on assistant turns to roll back all files modified in that specific turn to their pre-turn state.

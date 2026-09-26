@@ -5,6 +5,21 @@ All notable changes to the "OMP Chat" extension will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Native OMP HTML Session Export (`export_html`):** Added `/export` slash command and tab context menu action to generate standalone interactive HTML exports via OMP RPC.
+- **Detailed Session Stats & Cost Modal (`get_session_stats`):** Added `/stats`, `/usage`, and `/cost` commands (and context meter click) to display exact token breakdown, dollar spend, cache read savings, and tool counts.
+- **Native Context Compaction (`compact`):** Invokes OMP's native context compaction directly over RPC via `/compact`.
+- **WorkspaceState Toggle Persistence:** Migrated visibility toggles (`showThinking`, `showTools`, `showTerminal`), `approvalMode`, and `advisorEnabled` to VS Code `workspaceState` to persist across window reloads without touching `.vscode/settings.json`.
+- **New Chat Header Button:** Wired the `+` icon in the tab header to trigger a new chat session.
+- **Composer Autocomplete for `/export` and `/stats`:** Added autocomplete entries with descriptions and icons.
+
+### Fixed
+- **Live Usage Meter Synchronization:** Restored `contextUsage` in the webview's `ready` state handler so the percentage ring updates after each turn.
+- **Thinking Block Codeblock Isolation:** Inline `<think>` / `<thought>` blocks are extracted and isolated in escaped `<pre>` elements so embedded code blocks cannot break out of thinking folds.
+- **Balanced User Bubble Styling:** Replaced unbalanced thick left accent stripe with a subtle all-around border, elevated surface tint, and soft drop shadow.
+
 ## [0.8.0] - 2026-09-24
 
 Initial release of the **GrampHoang/omp-vscode** fork.

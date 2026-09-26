@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from "path";
 import { AttachmentService } from "../omp/attachmentService";
 import { logError, logWarn, showErrorLog } from "../omp/errorLog";
 import { pickMode, pickModel } from "../omp/modelCatalog";
@@ -25,19 +26,30 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     private readonly extensionUri: vscode.Uri,
     private readonly sessions: TabManager,
     storageUri: vscode.Uri,
+    private readonly workspaceState?: vscode.Memento,
   ) {
     this.attachments = new AttachmentService(sessions, storageUri);
     this.displayName = this.resolveDisplayName();
     this.mode =
-      vscode.workspace.getConfiguration("ompChatExtend").get<string>("mode", "Agent") || "Agent";
+      this.workspaceState?.get<string>("ompChatExtend.mode") ??
+      (vscode.workspace.getConfiguration("ompChatExtend").get<string>("mode", "Agent") || "Agent");
     this.showThinking =
+      this.workspaceState?.get<boolean>("ompChatExtend.showThinking") ??
       vscode.workspace.getConfiguration("ompChatExtend").get<boolean>("showThinking", true);
     this.showTerminal =
+      this.workspaceState?.get<boolean>("ompChatExtend.showTerminal") ??
       vscode.workspace.getConfiguration("ompChatExtend").get<boolean>("showTerminal", true);
     this.showTools =
+      this.workspaceState?.get<boolean>("ompChatExtend.showTools") ??
       vscode.workspace.getConfiguration("ompChatExtend").get<boolean>("showTools", true);
     this.approvalMode =
-      vscode.workspace.getConfiguration("ompChatExtend").get<string>("approvalMode", "yolo") || "yolo";
+      this.workspaceState?.get<string>("ompChatExtend.approvalMode") ??
+      (vscode.workspace.getConfiguration("ompChatExtend").get<string>("approvalMode", "yolo") || "yolo");
+
+    const savedAdvisor = this.workspaceState?.get<boolean>("ompChatExtend.advisorEnabled");
+    if (savedAdvisor) {
+      void this.sessions.toggleAdvisor("on");
+    }
     this.disposables.push(
       sessions.onDidChange(() => {
         this.postState();
@@ -226,19 +238,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         break;
       case "setApprovalMode":
         this.approvalMode = msg.mode || "yolo";
+        void this.workspaceState?.update("ompChatExtend.approvalMode", this.approvalMode);
         await this.sessions.restart({ approvalMode: this.approvalMode });
         this.postState();
         break;
+      case "toggleAdvisor":
+        await this.sessions.toggleAdvisor();
+        void this.workspaceState?.update("ompChatExtend.advisorEnabled", this.sessions.isAdvisorEnabled());
+        this.postState();
+        break;
       case "showUsage": {
-        const usage = this.sessions.getContextUsage();
-        const model = this.currentModelLabel();
-        if (!usage) {
-          vscode.window.showInformationMessage(`Model: ${model}\nContext usage: unavailable yet`);
-        } else {
-          vscode.window.showInformationMessage(
-            `Model: ${model}\nContext: ${usage.tokens.toLocaleString()} / ${usage.contextWindow.toLocaleString()} tokens (${usage.percent.toFixed(2)}%)`,
-          );
-        }
+        await this.showUsageReport();
         break;
       }
       case "showTogglesMenu":
@@ -712,16 +722,19 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   async toggleThinkingVisibility(): Promise<void> {
     this.showThinking = !this.showThinking;
+    void this.workspaceState?.update("ompChatExtend.showThinking", this.showThinking);
     this.postState();
   }
 
   async toggleTerminalVisibility(): Promise<void> {
     this.showTerminal = !this.showTerminal;
+    void this.workspaceState?.update("ompChatExtend.showTerminal", this.showTerminal);
     this.postState();
   }
 
   async toggleToolsVisibility(): Promise<void> {
     this.showTools = !this.showTools;
+    void this.workspaceState?.update("ompChatExtend.showTools", this.showTools);
     this.postState();
   }
   private async showTogglesMenu(): Promise<void> {
@@ -758,6 +771,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     switch (picked.action) {
       case "advisor":
         await this.sessions.toggleAdvisor();
+        void this.workspaceState?.update("ompChatExtend.advisorEnabled", this.sessions.isAdvisorEnabled());
         break;
       case "thinkingVisibility":
         await this.toggleThinkingVisibility();
@@ -777,6 +791,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.mode = selected;
+    void this.workspaceState?.update("ompChatExtend.mode", this.mode);
     this.postState();
   }
 
@@ -871,6 +886,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           action: "export" as const,
         },
         {
+          label: "$(file-code) Export as HTML (Native OMP)…",
+          description: "Export clean interactive HTML transcript using OMP",
+          action: "exportHtml" as const,
+        },
+        {
           label: "$(copy) Copy Plain Text",
           description: "Copy full session record to clipboard",
           action: "copy" as const,
@@ -895,8 +915,79 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       await this.renameTab(tabId, title);
       return;
     }
+    if (picked.action === "exportHtml") {
+      await this.exportTabHtml(tabId);
+      return;
+    }
     await this.handleTabTranscriptAction(tabId, picked.action);
   }
+  private async exportTabHtml(tabId: string): Promise<void> {
+    try {
+      const res = await this.sessions.exportHtmlForTab(tabId);
+      if (res.path) {
+        const uri = vscode.Uri.file(res.path);
+        const action = await vscode.window.showInformationMessage(
+          `OMP session exported to HTML: ${path.basename(res.path)}`,
+          "Open in Browser",
+          "Reveal in File Explorer",
+        );
+        if (action === "Open in Browser") {
+          await vscode.env.openExternal(uri);
+        } else if (action === "Reveal in File Explorer") {
+          await vscode.commands.executeCommand("revealFileInOS", uri);
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(`Failed to export session to HTML: ${msg}`);
+    }
+  }
+
+  private async showUsageReport(): Promise<void> {
+    const stats = await this.sessions.getSessionStats();
+    const model = this.currentModelLabel();
+    const usage = this.sessions.getContextUsage();
+
+    const tokens = (stats.tokens as Record<string, number> | undefined) ?? {};
+    const cost = typeof stats.cost === "number" ? stats.cost : null;
+    const userMsgs = stats.userMessages ?? 0;
+    const asstMsgs = stats.assistantMessages ?? 0;
+    const toolCalls = stats.toolCalls ?? 0;
+
+    const items: vscode.QuickPickItem[] = [];
+    items.push({
+      label: `$(hubot) Active Model: ${model}`,
+      description: cost != null ? `Estimated spend: $${cost.toFixed(4)}` : undefined,
+    });
+    if (usage) {
+      items.push({
+        label: `$(database) Context Window: ${usage.tokens.toLocaleString()} / ${usage.contextWindow.toLocaleString()} tokens (${usage.percent.toFixed(2)}%)`,
+        description: "Active session context fill level",
+      });
+    }
+    if (tokens.total || tokens.input || tokens.output) {
+      items.push({
+        label: `$(graph) Token Usage: ${Number(tokens.total || 0).toLocaleString()} total`,
+        description: `Input: ${Number(tokens.input || 0).toLocaleString()} · Output: ${Number(tokens.output || 0).toLocaleString()} · Reasoning: ${Number(tokens.reasoning || 0).toLocaleString()}`,
+      });
+      if (tokens.cacheRead) {
+        items.push({
+          label: `$(zap) Prompt Cache Reads: ${Number(tokens.cacheRead).toLocaleString()} tokens saved`,
+          description: "Cached prompt tokens reused across turns",
+        });
+      }
+    }
+    items.push({
+      label: `$(comment-discussion) Turn Messages: ${userMsgs} user, ${asstMsgs} assistant`,
+      description: `Executed ${toolCalls} tool calls this session`,
+    });
+
+    await vscode.window.showQuickPick(items, {
+      title: "OMP Session Context & Usage Report",
+      placeHolder: "Detailed session statistics directly from OMP RPC",
+    });
+  }
+
 
   private async renameTab(tabId: string, currentTitle: string): Promise<void> {
     const next = await vscode.window.showInputBox({
@@ -1225,6 +1316,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       terminal: true,
       cmd: true,
       usage: true,
+      stats: true,
+      export: true,
       history: true,
       tabs: true,
       help: true,
@@ -1279,9 +1372,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         break;
       }
       case "compact":
+        try {
+          await this.sessions.compact();
+          vscode.window.showInformationMessage("OMP context compacted and summarized successfully.");
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          vscode.window.showWarningMessage(`Compaction: ${msg}`);
+        }
+        this.postState();
+        break;
       case "shake":
-      case "cost":
-        await this.sessions.send(`/${id}`);
+        await this.sessions.send("/shake");
         void this.sessions.refreshSessionState();
         break;
       case "approval":
@@ -1306,25 +1407,21 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "cmd":
         await this.attachTerminal();
         break;
-      case "usage": {
-        const usage = this.sessions.getContextUsage();
-        const model = this.currentModelLabel();
-        if (!usage) {
-          vscode.window.showInformationMessage(`Model: ${model}\nContext usage: unavailable yet`);
-        } else {
-          vscode.window.showInformationMessage(
-            `Model: ${model}\nContext: ${usage.tokens.toLocaleString()} / ${usage.contextWindow.toLocaleString()} tokens (${usage.percent.toFixed(2)}%)`,
-          );
-        }
+      case "cost":
+      case "stats":
+      case "usage":
+        await this.showUsageReport();
         break;
-      }
+      case "export":
+        await this.exportTabHtml(this.sessions.getActiveId() || "");
+        break;
       case "history":
       case "tabs":
         await this.showTabPicker();
         break;
       case "help":
         vscode.window.showInformationMessage(
-          "Commands: /new /stop /restart /model /thinking /advisor /mode /attach /folder /terminal /usage /history /help — Files/folders: type @ to mention inline; @terminal attaches CMD output",
+          "Commands: /new /stop /restart /model /thinking /advisor /mode /attach /folder /terminal /usage /stats /compact /export /history /help",
         );
         break;
       default:

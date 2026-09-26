@@ -245,6 +245,29 @@ export class SessionManager {
     }
     return [];
   }
+  async exportHtml(): Promise<{ path: string }> {
+    if (!this.client?.isReady) {
+      throw new Error("OMP session is not running");
+    }
+    return this.client.exportHtml();
+  }
+
+  async getSessionStats(): Promise<Record<string, unknown>> {
+    if (!this.client?.isReady) {
+      return {};
+    }
+    return this.client.getSessionStats();
+  }
+
+  async compact(): Promise<void> {
+    if (!this.client?.isReady) {
+      throw new Error("OMP session is not running");
+    }
+    await this.client.compact();
+    await this.refreshSessionState();
+    this.notify();
+  }
+
 
   isAdvisorEnabled(): boolean {
     return this.advisorEnabled;

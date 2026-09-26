@@ -106,7 +106,9 @@
     { id: "attach", label: "/attach", detail: "Attach files" },
     { id: "folder", label: "/folder", detail: "Attach a folder" },
     { id: "terminal", label: "/terminal", detail: "Attach terminal / CMD output" },
-    { id: "usage", label: "/usage", detail: "Show context usage" },
+    { id: "usage", label: "/usage", detail: "Show detailed token, cost, and usage statistics" },
+    { id: "stats", label: "/stats", detail: "Show detailed token, cost, and usage statistics" },
+    { id: "export", label: "/export", detail: "Export session as interactive HTML using native OMP" },
     { id: "history", label: "/history", detail: "Switch chat tabs" },
     { id: "help", label: "/help", detail: "List available commands" },
   ];
@@ -429,6 +431,29 @@
   function renderMarkdownish(text) {
     const raw = String(text == null ? "" : text);
     if (!raw.trim()) return "<p></p>";
+    // Safely isolate inline <think> or <thought> tags so thoughts with code blocks never break into the chat
+    if (raw.indexOf("<think>") >= 0 || raw.indexOf("<thought>") >= 0) {
+      let thinkHtml = "";
+      const cleaned = raw.replace(/<(think|thought)>([\s\S]*?)(?:<\/\1>|$)/gi, function (_, tag, thought) {
+        const body = escapeHtml(thought.trim());
+        const snippet = latestThinkingSnippet(thought);
+        thinkHtml +=
+          '<details class="collapse thinking">' +
+            '<summary class="collapse-summary">' +
+              '<span class="collapse-row">' +
+                '<span class="collapse-title">Thought</span>' +
+                (snippet ? '<span class="thinking-preview">· ' + escapeHtml(snippet) + '</span>' : '') +
+              '</span>' +
+            '</summary>' +
+            '<div class="collapse-body"><pre class="thinking-body">' + body + '</pre></div>' +
+          '</details>';
+        return "";
+      });
+      if (thinkHtml) {
+        return thinkHtml + (cleaned.trim() ? renderMarkdownish(cleaned) : "");
+      }
+    }
+
 
     const lines = raw.split(/\r?\n/);
     const blocks = [];
@@ -3070,6 +3095,7 @@
       send();
     });
   }
+  if (newChatBtn) newChatBtn.addEventListener("click", function () { vscode.postMessage({ type: "newChat" }); });
   if (historyBtn) historyBtn.addEventListener("click", function () { vscode.postMessage({ type: "history" }); });
   if (moreBtn) moreBtn.addEventListener("click", function () { vscode.postMessage({ type: "moreMenu" }); });
   if (togglesBtn) {
@@ -3745,6 +3771,8 @@
         tabs: msg.tabs || [],
         activeTabId: nextTabId,
         uiQuestion: msg.uiQuestion !== undefined ? msg.uiQuestion : null,
+        contextUsage: msg.contextUsage !== undefined ? msg.contextUsage : state.contextUsage,
+        displayName: msg.displayName || state.displayName,
       };
       render();
       return;

@@ -85,12 +85,11 @@ button {
   line-height: 1.55; white-space: normal; word-break: break-word;
 }
 .msg.user .bubble {
-  background: color-mix(in srgb, var(--panel) 75%, var(--link) 8%);
-  border: 1px solid color-mix(in srgb, var(--link) 25%, var(--border));
-  border-left: 3px solid var(--link);
+  background: color-mix(in srgb, var(--panel) 85%, var(--link) 12%);
+  border: 1px solid color-mix(in srgb, var(--link) 45%, var(--border));
   border-radius: 12px; padding: 10px 14px; width: 100%; max-width: 100%; min-width: 0;
   color: var(--text);
-  box-shadow: 0 1px 4px color-mix(in srgb, #000 15%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, #000 20%, transparent);
 }
 .msg.system .bubble {
   background: color-mix(in srgb, var(--text) 4%, transparent);

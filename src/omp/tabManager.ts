@@ -462,6 +462,27 @@ export class TabManager {
   async getAvailableModels(): Promise<unknown[]> {
     return this.active().getAvailableModels();
   }
+  async exportHtml(): Promise<{ path: string }> {
+    return this.active().exportHtml();
+  }
+
+  async exportHtmlForTab(tabId: string): Promise<{ path: string }> {
+    const tab = this.tabs.get(tabId);
+    if (!tab) {
+      throw new Error(`Tab "${tabId}" not found`);
+    }
+    await tab.session.ensureStarted();
+    return tab.session.exportHtml();
+  }
+
+  async getSessionStats(): Promise<Record<string, unknown>> {
+    return this.active().getSessionStats();
+  }
+
+  async compact(): Promise<void> {
+    await this.active().compact();
+  }
+
 
   isAdvisorEnabled(): boolean {
     return this.active().isAdvisorEnabled();
